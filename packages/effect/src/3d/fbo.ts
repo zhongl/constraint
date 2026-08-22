@@ -25,14 +25,9 @@ function assertFboCapability(capability: string, supported: boolean): void {
   }
 }
 
-export function assertFboRenderer(
-  renderer: THREE.WebGLRenderer,
-): asserts renderer is FboRenderer {
+export function assertFboRenderer(renderer: THREE.WebGLRenderer): asserts renderer is FboRenderer {
   const gl = renderer.getContext();
-  assertFboCapability(
-    "MAX_VERTEX_TEXTURE_IMAGE_UNITS",
-    !!gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS),
-  );
+  assertFboCapability("MAX_VERTEX_TEXTURE_IMAGE_UNITS", !!gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS));
 
   const extensions = renderer.capabilities.isWebGL2
     ? ["EXT_color_buffer_float"]
@@ -80,12 +75,7 @@ export class Fbo {
     this.position = new Position(pass);
   }
 
-  update(
-    dt: number,
-    simulationSpeed: number,
-    constraintRatio: number,
-    mouse3d: THREE.Vector3 | null,
-  ): THREE.Texture {
+  update(dt: number, simulationSpeed: number, constraintRatio: number, mouse3d: THREE.Vector3 | null): THREE.Texture {
     const delta = (Math.min(dt, 50) / (1000 / 60)) * simulationSpeed;
 
     const texturePosition = PingPongBuffers.read(this.positionBuffers);
@@ -121,6 +111,20 @@ export class Fbo {
 }
 
 type Render = (target: THREE.WebGLRenderTarget) => void;
+
+type InputUniforms<T extends object> = {
+  [K in keyof T]: THREE.IUniform<T[K] | null>;
+};
+
+type ComputeUniforms<T extends object> = InputUniforms<T> & {
+  resolution: THREE.IUniform<THREE.Vector2>;
+};
+
+function setUniforms<T extends object>(uniforms: InputUniforms<T>, input: T): void {
+  for (const key of Object.keys(input) as (keyof T)[]) {
+    uniforms[key].value = input[key];
+  }
+}
 
 class Pass {
   private readonly scene: THREE.Scene;
@@ -158,9 +162,9 @@ interface ComputeShader<T> {
 class Copy implements ComputeShader<THREE.Texture> {
   constructor(private readonly pass: Pass) {}
 
-  render(input: THREE.Texture): Render {
+  render(inputTexture: THREE.Texture): Render {
     return (target) => {
-      this.shader.uniforms.inputTexture!.value = input;
+      this.shader.uniforms.inputTexture!.value = inputTexture;
       this.pass.apply(this.shader)(target);
     };
   }
@@ -187,18 +191,22 @@ type VelocityInput = {
   texturePosition: THREE.Texture;
 };
 
+type VelocityUniformInput = Omit<VelocityInput, "mouse3d">;
+
 class Velocity implements ComputeShader<VelocityInput> {
+  private readonly uniforms: ComputeUniforms<VelocityUniformInput> & {
+    mouse3d: THREE.IUniform<THREE.Vector3>;
+  } = {
+    resolution: { value: new THREE.Vector2() },
+    mouse3d: { value: new THREE.Vector3() },
+    texturePosition: { value: null },
+    textureVelocity: { value: null },
+    constraintRatio: { value: 0 },
+    delta: { value: 1 },
+  };
+
   private readonly shader = new THREE.ShaderMaterial({
-    uniforms: {
-      resolution: {
-        value: new THREE.Vector2(),
-      },
-      mouse3d: { value: new THREE.Vector3() },
-      texturePosition: { value: null },
-      textureVelocity: { value: null },
-      constraintRatio: { value: 0 },
-      delta: { value: 1 },
-    },
+    uniforms: this.uniforms,
     vertexShader: shaderParse(fboVert),
     fragmentShader: shaderParse(velocityFrag),
     blending: THREE.NoBlending,
@@ -212,19 +220,11 @@ class Velocity implements ComputeShader<VelocityInput> {
     private readonly pass: Pass,
   ) {}
 
-  render({
-    delta,
-    constraintRatio,
-    mouse3d,
-    textureVelocity,
-    texturePosition,
-  }: VelocityInput): Render {
+  render(input: VelocityInput): Render {
     return (target) => {
-      this.shader.uniforms.delta!.value = delta;
-      this.shader.uniforms.constraintRatio!.value = constraintRatio;
-      this.shader.uniforms.mouse3d!.value.copy(mouse3d ?? this.defaultMouse3d);
-      this.shader.uniforms.textureVelocity!.value = textureVelocity;
-      this.shader.uniforms.texturePosition!.value = texturePosition;
+      const { mouse3d, ...uniformInput } = input;
+      setUniforms<VelocityUniformInput>(this.uniforms, uniformInput);
+      this.uniforms.mouse3d.value.copy(mouse3d ?? this.defaultMouse3d);
       this.pass.apply(this.shader)(target);
     };
   }
@@ -233,21 +233,18 @@ class Velocity implements ComputeShader<VelocityInput> {
   }
 }
 
-type PositionInput = {
-  delta: number;
-  textureVelocity: THREE.Texture;
-  texturePosition: THREE.Texture;
-};
+type PositionInput = Pick<VelocityInput, "delta" | "textureVelocity" | "texturePosition">;
+
 class Position implements ComputeShader<PositionInput> {
+  private readonly uniforms: ComputeUniforms<PositionInput> = {
+    resolution: { value: new THREE.Vector2() },
+    texturePosition: { value: null },
+    textureVelocity: { value: null },
+    delta: { value: 1 },
+  };
+
   private readonly shader = new THREE.ShaderMaterial({
-    uniforms: {
-      resolution: {
-        value: new THREE.Vector2(),
-      },
-      texturePosition: { value: null },
-      textureVelocity: { value: null },
-      delta: { value: 1 },
-    },
+    uniforms: this.uniforms,
     vertexShader: shaderParse(fboVert),
     fragmentShader: shaderParse(positionFrag),
     blending: THREE.NoBlending,
@@ -258,11 +255,9 @@ class Position implements ComputeShader<PositionInput> {
 
   constructor(private readonly pass: Pass) {}
 
-  render({ delta, textureVelocity, texturePosition }: PositionInput): Render {
+  render(input: PositionInput): Render {
     return (target) => {
-      this.shader.uniforms.delta!.value = delta;
-      this.shader.uniforms.textureVelocity!.value = textureVelocity;
-      this.shader.uniforms.texturePosition!.value = texturePosition;
+      setUniforms(this.uniforms, input);
       this.pass.apply(this.shader)(target);
     };
   }
@@ -293,17 +288,8 @@ function position(size: number): Float32Array {
   return a;
 }
 
-function squareTexture(
-  size: number,
-  data: (size: number) => Float32Array,
-): THREE.DataTexture {
-  const texture = new THREE.DataTexture(
-    data(size),
-    size,
-    size,
-    THREE.RGBAFormat,
-    THREE.FloatType,
-  );
+function squareTexture(size: number, data: (size: number) => Float32Array): THREE.DataTexture {
+  const texture = new THREE.DataTexture(data(size), size, size, THREE.RGBAFormat, THREE.FloatType);
   texture.minFilter = THREE.NearestFilter;
   texture.magFilter = THREE.NearestFilter;
   texture.needsUpdate = true;
