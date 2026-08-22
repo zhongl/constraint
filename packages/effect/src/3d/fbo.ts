@@ -71,11 +71,34 @@ class FboPassRenderer {
   }
 }
 
+class CopyPass {
+  private readonly shader = new THREE.ShaderMaterial({
+    uniforms: {
+      resolution: { value: new THREE.Vector2() },
+      inputTexture: { value: null },
+    },
+    vertexShader: shaderParse(fboVert),
+    fragmentShader: shaderParse(fboThroughFrag),
+  });
+
+  constructor(private readonly renderer: FboPassRenderer) {}
+
+  copy(input: THREE.Texture, output: THREE.WebGLRenderTarget): void {
+    this.shader.uniforms.resolution!.value.set(output.width, output.height);
+    this.shader.uniforms.inputTexture!.value = input;
+    this.renderer.render(this.shader, output);
+  }
+
+  dispose(): void {
+    this.shader.dispose();
+  }
+}
+
 export class Fbo {
   readonly textureSize: number;
   readonly amount: number;
 
-  private _copyShader!: THREE.ShaderMaterial;
+  private _copyPass!: CopyPass;
   private _velocityShader!: THREE.ShaderMaterial;
   private _positionShader!: THREE.ShaderMaterial;
   private _velocityRenderTarget!: THREE.WebGLRenderTarget;
@@ -91,18 +114,6 @@ export class Fbo {
   }
 
   init(renderer: FboRenderer): void {
-    const square = this.squareVector(this.textureSize);
-    this._copyShader = new THREE.ShaderMaterial({
-      uniforms: {
-        resolution: {
-          value: square,
-        },
-        inputTexture: { value: null },
-      },
-      vertexShader: shaderParse(fboVert),
-      fragmentShader: shaderParse(fboThroughFrag),
-    });
-
     this._velocityShader = new THREE.ShaderMaterial({
       uniforms: {
         resolution: {
@@ -142,12 +153,13 @@ export class Fbo {
     });
 
     this._passRenderer = new FboPassRenderer(renderer);
+    this._copyPass = new CopyPass(this._passRenderer);
 
     this._velocityRenderTarget = this.createRenderTarget(this.textureSize);
     this._velocityRenderTarget2 = this._velocityRenderTarget.clone();
     const velocityTexture = this.createVelocityTexture(this.textureSize);
-    this.copyTexture(velocityTexture, this._velocityRenderTarget);
-    this.copyTexture(
+    this._copyPass.copy(velocityTexture, this._velocityRenderTarget);
+    this._copyPass.copy(
       this._velocityRenderTarget.texture,
       this._velocityRenderTarget2,
     );
@@ -156,17 +168,12 @@ export class Fbo {
     this._positionRenderTarget = this.createRenderTarget(this.textureSize);
     this._positionRenderTarget2 = this._positionRenderTarget.clone();
     const positionTexture = this.createPositionTexture(this.textureSize);
-    this.copyTexture(positionTexture, this._positionRenderTarget);
-    this.copyTexture(
+    this._copyPass.copy(positionTexture, this._positionRenderTarget);
+    this._copyPass.copy(
       this._positionRenderTarget.texture,
       this._positionRenderTarget2,
     );
     positionTexture.dispose();
-
-  }
-
-  private squareVector(size: number) {
-    return new THREE.Vector2(size, size);
   }
 
   update(
@@ -199,7 +206,7 @@ export class Fbo {
     this._velocityRenderTarget2.dispose();
     this._positionRenderTarget.dispose();
     this._positionRenderTarget2.dispose();
-    this._copyShader.dispose();
+    this._copyPass.dispose();
     this._velocityShader.dispose();
     this._positionShader.dispose();
     this._passRenderer.dispose();
@@ -248,14 +255,6 @@ export class Fbo {
       this._positionShader,
       this._positionRenderTarget,
     );
-  }
-
-  private copyTexture(
-    input: THREE.Texture,
-    output: THREE.WebGLRenderTarget,
-  ): void {
-    this._copyShader.uniforms.inputTexture!.value = input;
-    this._passRenderer.render(this._copyShader, output);
   }
 
   private createVelocityTexture(size: number): THREE.DataTexture {
