@@ -1,19 +1,13 @@
 import * as THREE from "three";
 
-export type PingPongBuffers = [
-  read: THREE.WebGLRenderTarget,
-  write: THREE.WebGLRenderTarget
-];
+export type PingPongBuffers = [read: THREE.WebGLRenderTarget, write: THREE.WebGLRenderTarget];
 
 export const PingPongBuffers = {
   read([r, _]: PingPongBuffers): THREE.Texture {
     return r.texture;
   },
 
-  write(
-    [r, w]: PingPongBuffers,
-    output: (t: THREE.WebGLRenderTarget) => void
-  ): PingPongBuffers {
+  write([r, w]: PingPongBuffers, output: (t: THREE.WebGLRenderTarget) => void): PingPongBuffers {
     output(w);
     return [w, r];
   },
