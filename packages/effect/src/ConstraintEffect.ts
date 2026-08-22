@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Fbo } from './3d/fbo';
+import { Fbo, assertFboRenderer } from './3d/fbo';
 import { ConstraintGround } from './3d/ground';
 import { ConstraintLights } from './3d/lights';
 import { ConstraintLines } from './3d/lines';
@@ -84,7 +84,10 @@ export class ConstraintEffect {
     get fogDensity(): number { return this._fogDensity; }
     set fogDensity(value: number) { this._fogDensity = value; }
 
-    init(): boolean {
+    init(): void {
+        assertFboRenderer(this._renderer);
+        this._fbo.init(this._renderer);
+
         this._ignoredMaterial = new THREE.Material();
 
         const ignoredMaterial = this._ignoredMaterial;
@@ -98,7 +101,6 @@ export class ConstraintEffect {
 
         this._scene.fog = this._fog;
 
-        if (!this._fbo.init(this._renderer)) return false;
 
         this._lights.init();
         this._scene.add(this._lights.mesh);
@@ -114,7 +116,6 @@ export class ConstraintEffect {
         this._skybox.frustumCulled = false;
         this._scene.add(this._skybox);
 
-        return true;
     }
 
     dispose(): void {

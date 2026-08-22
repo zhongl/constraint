@@ -3,7 +3,10 @@ import './styles/index.css';
 import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { ConstraintEffect } from '@constraint/effect';
+import {
+    ConstraintEffect,
+    UnsupportedWebGLCapabilityError
+} from '@constraint/effect';
 
 class App {
     private readonly _raf = window.requestAnimationFrame.bind(window);
@@ -29,14 +32,9 @@ class App {
     followTimeout = 500;
 
     init(): void {
-        try {
-            this._renderer = new THREE.WebGLRenderer({
-                antialias: true
-            });
-        } catch {
-            this._showCompatibilityMessage();
-            return;
-        }
+        this._renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
         this._renderer.debug.checkShaderErrors = true;
         this._renderer.shadowMap.type = THREE.PCFShadowMap;
         this._renderer.shadowMap.enabled = true;
@@ -60,12 +58,7 @@ class App {
             textureSize: 32,
             lineAmount: 1024 * 16
         });
-        if (!this._effect.init()) {
-            this._renderer.dispose();
-            this._renderer.domElement.remove();
-            this._showCompatibilityMessage();
-            return;
-        }
+        this._effect.init();
 
         this._gui = new GUI();
         const linesGui = this._gui.addFolder('Motion');
@@ -106,9 +99,6 @@ class App {
         this._loop();
     }
 
-    private _showCompatibilityMessage(): void {
-        document.body.innerHTML = '<main class="compatibility-message"><h1>无法运行此实验</h1><p>你的设备或浏览器不支持运行所需的 WebGL 浮点纹理能力。</p><p>请尝试使用最新版 Chrome、Safari 或 Firefox，并开启硬件加速。</p></main>';
-    }
 
     private _onKeyUp(evt: KeyboardEvent): void {
         if (evt.keyCode === 32) {
@@ -170,4 +160,20 @@ class App {
     }
 }
 
-new App().init();
+function showInitializationError(error: unknown): void {
+    const message = error instanceof UnsupportedWebGLCapabilityError
+        ? '你的设备或浏览器不支持运行所需的 WebGL 能力。'
+        : '初始化时发生错误。';
+    document.body.innerHTML = `<main class="compatibility-message"><h1>无法运行此实验</h1><p>${message}</p><p>请尝试使用最新版 Chrome、Safari 或 Firefox，并开启硬件加速。</p></main>`;
+}
+
+function main(): void {
+    try {
+        new App().init();
+    } catch (error) {
+        console.error(error);
+        showInitializationError(error);
+    }
+}
+
+main();

@@ -7,6 +7,42 @@ import positionFrag from "../glsl/position.frag";
 
 const defaultMouse3d = new THREE.Vector3(0, 0, -9999);
 
+declare const fboRenderer: unique symbol;
+
+export type FboRenderer = THREE.WebGLRenderer & {
+  readonly [fboRenderer]: true;
+};
+
+export class UnsupportedWebGLCapabilityError extends Error {
+  constructor(capability: string) {
+    super(`FBO requires ${capability}`);
+    this.name = "UnsupportedWebGLCapabilityError";
+  }
+}
+
+function assertFboCapability(capability: string, supported: boolean): void {
+  if (!supported) {
+    throw new UnsupportedWebGLCapabilityError(capability);
+  }
+}
+
+export function assertFboRenderer(
+  renderer: THREE.WebGLRenderer,
+): asserts renderer is FboRenderer {
+  const gl = renderer.getContext();
+  assertFboCapability(
+    "MAX_VERTEX_TEXTURE_IMAGE_UNITS",
+    !!gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS),
+  );
+
+  const extensions = renderer.capabilities.isWebGL2
+    ? ["EXT_color_buffer_float"]
+    : ["OES_texture_float", "WEBGL_color_buffer_float"];
+  for (const extension of extensions) {
+    assertFboCapability(extension, !!gl.getExtension(extension));
+  }
+}
+
 class FboPassRenderer {
   private readonly scene: THREE.Scene;
   private readonly camera: THREE.Camera;
@@ -54,21 +90,7 @@ export class Fbo {
     this.amount = textureSize * textureSize;
   }
 
-  init(renderer: THREE.WebGLRenderer): boolean {
-    const gl = renderer.getContext();
-    if (!gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS)) return false;
-
-    const isWebGL2 =
-      typeof WebGL2RenderingContext !== "undefined" &&
-      gl instanceof WebGL2RenderingContext;
-    if (!isWebGL2 && !gl.getExtension("OES_texture_float")) return false;
-    if (
-      !gl.getExtension(
-        isWebGL2 ? "EXT_color_buffer_float" : "WEBGL_color_buffer_float",
-      )
-    )
-      return false;
-
+  init(renderer: FboRenderer): void {
     const square = this.squareVector(this.textureSize);
     this._copyShader = new THREE.ShaderMaterial({
       uniforms: {
@@ -141,7 +163,6 @@ export class Fbo {
     );
     positionTexture.dispose();
 
-    return true;
   }
 
   private squareVector(size: number) {
