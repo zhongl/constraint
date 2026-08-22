@@ -4,8 +4,7 @@ import fboVert from "../glsl/fbo.vert";
 import fboThroughFrag from "../glsl/fboThrough.frag";
 import velocityFrag from "../glsl/velocity.frag";
 import positionFrag from "../glsl/position.frag";
-
-const defaultMouse3d = new THREE.Vector3(0, 0, -9999);
+import { PingPongBuffers } from "./pingpong";
 
 declare const fboRenderer: unique symbol;
 
@@ -43,137 +42,40 @@ export function assertFboRenderer(
   }
 }
 
-class FboPassRenderer {
-  private readonly scene: THREE.Scene;
-  private readonly camera: THREE.Camera;
-  private readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.Material>;
-
-  constructor(private readonly renderer: THREE.WebGLRenderer) {
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.Camera();
-    this.camera.position.z = 1;
-    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2));
-    this.scene.add(this.mesh);
-  }
-
-  render(
-    material: THREE.ShaderMaterial,
-    target: THREE.WebGLRenderTarget,
-  ): void {
-    this.mesh.material = material;
-    this.renderer.setRenderTarget(target);
-    this.renderer.render(this.scene, this.camera);
-    this.renderer.setRenderTarget(null);
-  }
-
-  dispose(): void {
-    this.mesh.geometry.dispose();
-  }
-}
-
-class CopyPass {
-  private readonly shader = new THREE.ShaderMaterial({
-    uniforms: {
-      resolution: { value: new THREE.Vector2() },
-      inputTexture: { value: null },
-    },
-    vertexShader: shaderParse(fboVert),
-    fragmentShader: shaderParse(fboThroughFrag),
-  });
-
-  constructor(private readonly renderer: FboPassRenderer) {}
-
-  copy(input: THREE.Texture, output: THREE.WebGLRenderTarget): void {
-    this.shader.uniforms.resolution!.value.set(output.width, output.height);
-    this.shader.uniforms.inputTexture!.value = input;
-    this.renderer.render(this.shader, output);
-  }
-
-  dispose(): void {
-    this.shader.dispose();
-  }
-}
-
 export class Fbo {
   readonly textureSize: number;
-  readonly amount: number;
 
-  private _copyPass!: CopyPass;
-  private _velocityShader!: THREE.ShaderMaterial;
-  private _positionShader!: THREE.ShaderMaterial;
-  private _velocityRenderTarget!: THREE.WebGLRenderTarget;
-  private _velocityRenderTarget2!: THREE.WebGLRenderTarget;
-  private _positionRenderTarget!: THREE.WebGLRenderTarget;
-  private _positionRenderTarget2!: THREE.WebGLRenderTarget;
-  private _passRenderer!: FboPassRenderer;
-  private _time = 0;
+  private velocityBuffers!: PingPongBuffers;
+  private positionBuffers!: PingPongBuffers;
+
+  private velocity!: Velocity;
+  private position!: Position;
+  private geometry!: THREE.PlaneGeometry;
 
   constructor(textureSize: number) {
     this.textureSize = textureSize;
-    this.amount = textureSize * textureSize;
   }
 
   init(renderer: FboRenderer): void {
-    this._velocityShader = new THREE.ShaderMaterial({
-      uniforms: {
-        resolution: {
-          value: new THREE.Vector2(this.textureSize, this.textureSize),
-        },
-        mouse3d: { value: new THREE.Vector3() },
-        texturePosition: { value: null },
-        textureVelocity: { value: null },
-        constraintRatio: { value: 0 },
-        delta: { value: 1 },
-        time: { value: 0 },
-      },
-      vertexShader: shaderParse(fboVert),
-      fragmentShader: shaderParse(velocityFrag),
-      blending: THREE.NoBlending,
-      transparent: false,
-      depthWrite: false,
-      depthTest: false,
-    });
+    this.velocityBuffers = PingPongBuffers.create(this.textureSize);
+    this.positionBuffers = PingPongBuffers.create(this.textureSize);
+    this.geometry = new THREE.PlaneGeometry(2, 2);
+    const pass = new Pass(this.geometry, renderer);
+    const copy = new Copy(pass);
 
-    this._positionShader = new THREE.ShaderMaterial({
-      uniforms: {
-        resolution: {
-          value: new THREE.Vector2(this.textureSize, this.textureSize),
-        },
-        texturePosition: { value: null },
-        textureVelocity: { value: null },
-        delta: { value: 1 },
-        time: { value: 0 },
-      },
-      vertexShader: shaderParse(fboVert),
-      fragmentShader: shaderParse(positionFrag),
-      blending: THREE.NoBlending,
-      transparent: false,
-      depthWrite: false,
-      depthTest: false,
-    });
-
-    this._passRenderer = new FboPassRenderer(renderer);
-    this._copyPass = new CopyPass(this._passRenderer);
-
-    this._velocityRenderTarget = this.createRenderTarget(this.textureSize);
-    this._velocityRenderTarget2 = this._velocityRenderTarget.clone();
-    const velocityTexture = this.createVelocityTexture(this.textureSize);
-    this._copyPass.copy(velocityTexture, this._velocityRenderTarget);
-    this._copyPass.copy(
-      this._velocityRenderTarget.texture,
-      this._velocityRenderTarget2,
+    this.velocityBuffers = PingPongBuffers.write(
+      this.velocityBuffers,
+      copy.render(squareTexture(this.textureSize, velocity)),
     );
-    velocityTexture.dispose();
-
-    this._positionRenderTarget = this.createRenderTarget(this.textureSize);
-    this._positionRenderTarget2 = this._positionRenderTarget.clone();
-    const positionTexture = this.createPositionTexture(this.textureSize);
-    this._copyPass.copy(positionTexture, this._positionRenderTarget);
-    this._copyPass.copy(
-      this._positionRenderTarget.texture,
-      this._positionRenderTarget2,
+    this.positionBuffers = PingPongBuffers.write(
+      this.positionBuffers,
+      copy.render(squareTexture(this.textureSize, position)),
     );
-    positionTexture.dispose();
+
+    copy.dispose();
+
+    this.velocity = new Velocity(new THREE.Vector3(0, 0, -9999), pass);
+    this.position = new Position(pass);
   }
 
   update(
@@ -184,124 +86,226 @@ export class Fbo {
   ): THREE.Texture {
     const delta = (Math.min(dt, 50) / (1000 / 60)) * simulationSpeed;
 
-    this._time += dt;
+    const texturePosition = PingPongBuffers.read(this.positionBuffers);
+    let textureVelocity = PingPongBuffers.read(this.velocityBuffers);
+    this.velocityBuffers = PingPongBuffers.write(
+      this.velocityBuffers,
+      this.velocity.render({
+        delta,
+        constraintRatio,
+        mouse3d,
+        textureVelocity,
+        texturePosition,
+      }),
+    );
 
-    this._velocityShader.uniforms.delta!.value = delta;
-    this._positionShader.uniforms.delta!.value = delta;
+    textureVelocity = PingPongBuffers.read(this.velocityBuffers);
 
-    const mouse3dUniformValue = this._velocityShader.uniforms.mouse3d!.value;
-    mouse3dUniformValue.copy(mouse3d ?? defaultMouse3d);
+    this.positionBuffers = PingPongBuffers.write(
+      this.positionBuffers,
+      this.position.render({ delta, textureVelocity, texturePosition }),
+    );
 
-    this._velocityShader.uniforms.constraintRatio!.value = constraintRatio;
-    // vt = velocity.update(pt, constraintRatio, time, delta, mouse3d)
-    // pt = position.update(vt, time, delta)
-    this._updateVelocity();
-    this._updatePosition();
-
-    return this._positionRenderTarget.texture;
+    return PingPongBuffers.read(this.positionBuffers);
   }
 
   dispose(): void {
-    this._velocityRenderTarget.dispose();
-    this._velocityRenderTarget2.dispose();
-    this._positionRenderTarget.dispose();
-    this._positionRenderTarget2.dispose();
-    this._copyPass.dispose();
-    this._velocityShader.dispose();
-    this._positionShader.dispose();
-    this._passRenderer.dispose();
+    this.geometry.dispose();
+    this.velocity.dispose();
+    this.position.dispose();
+    PingPongBuffers.dispose(this.velocityBuffers);
+    PingPongBuffers.dispose(this.positionBuffers);
+  }
+}
+
+type Render = (target: THREE.WebGLRenderTarget) => void;
+
+class Pass {
+  private readonly scene: THREE.Scene;
+  private readonly camera: THREE.Camera;
+  private readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.Material>;
+
+  constructor(
+    private readonly geometry: THREE.PlaneGeometry,
+    private readonly renderer: THREE.WebGLRenderer,
+  ) {
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.Camera();
+    this.camera.position.z = 1;
+    this.mesh = new THREE.Mesh(this.geometry);
+    this.scene.add(this.mesh);
   }
 
-  private createRenderTarget(size: number): THREE.WebGLRenderTarget {
-    return new THREE.WebGLRenderTarget(size, size, {
-      wrapS: THREE.RepeatWrapping,
-      wrapT: THREE.RepeatWrapping,
-      minFilter: THREE.NearestFilter,
-      magFilter: THREE.NearestFilter,
-      format: THREE.RGBAFormat,
-      type: THREE.FloatType,
-      depthBuffer: false,
-      stencilBuffer: false,
-    });
+  apply(shader: THREE.ShaderMaterial): Render {
+    return (target) => {
+      shader.uniforms.resolution!.value.set(target.width, target.height);
+      this.mesh.material = shader;
+      this.renderer.setRenderTarget(target);
+      this.renderer.render(this.scene, this.camera);
+      this.renderer.setRenderTarget(null);
+    };
+  }
+}
+
+interface ComputeShader<T> {
+  render(input: T): Render;
+
+  dispose(): void;
+}
+
+class Copy implements ComputeShader<THREE.Texture> {
+  constructor(private readonly pass: Pass) {}
+
+  render(input: THREE.Texture): Render {
+    return (target) => {
+      this.shader.uniforms.inputTexture!.value = input;
+      this.pass.apply(this.shader)(target);
+    };
   }
 
-  private _updateVelocity(): void {
-    const tmp = this._velocityRenderTarget;
-    this._velocityRenderTarget = this._velocityRenderTarget2;
-    this._velocityRenderTarget2 = tmp;
+  private readonly shader = new THREE.ShaderMaterial({
+    uniforms: {
+      resolution: { value: new THREE.Vector2() },
+      inputTexture: { value: null },
+    },
+    vertexShader: shaderParse(fboVert),
+    fragmentShader: shaderParse(fboThroughFrag),
+  });
 
-    this._velocityShader.uniforms.time!.value = this._time;
-    this._velocityShader.uniforms.textureVelocity!.value =
-      this._velocityRenderTarget2.texture;
-    this._velocityShader.uniforms.texturePosition!.value =
-      this._positionRenderTarget.texture;
-    this._passRenderer.render(
-      this._velocityShader,
-      this._velocityRenderTarget,
-    );
+  dispose(): void {
+    this.shader.dispose();
+  }
+}
+
+type VelocityInput = {
+  delta: number;
+  constraintRatio: number;
+  mouse3d: THREE.Vector3 | null;
+  textureVelocity: THREE.Texture;
+  texturePosition: THREE.Texture;
+};
+
+class Velocity implements ComputeShader<VelocityInput> {
+  private readonly shader = new THREE.ShaderMaterial({
+    uniforms: {
+      resolution: {
+        value: new THREE.Vector2(),
+      },
+      mouse3d: { value: new THREE.Vector3() },
+      texturePosition: { value: null },
+      textureVelocity: { value: null },
+      constraintRatio: { value: 0 },
+      delta: { value: 1 },
+    },
+    vertexShader: shaderParse(fboVert),
+    fragmentShader: shaderParse(velocityFrag),
+    blending: THREE.NoBlending,
+    transparent: false,
+    depthWrite: false,
+    depthTest: false,
+  });
+
+  constructor(
+    private readonly defaultMouse3d: THREE.Vector3,
+    private readonly pass: Pass,
+  ) {}
+
+  render({
+    delta,
+    constraintRatio,
+    mouse3d,
+    textureVelocity,
+    texturePosition,
+  }: VelocityInput): Render {
+    return (target) => {
+      this.shader.uniforms.delta!.value = delta;
+      this.shader.uniforms.constraintRatio!.value = constraintRatio;
+      this.shader.uniforms.mouse3d!.value.copy(mouse3d ?? this.defaultMouse3d);
+      this.shader.uniforms.textureVelocity!.value = textureVelocity;
+      this.shader.uniforms.texturePosition!.value = texturePosition;
+      this.pass.apply(this.shader)(target);
+    };
+  }
+  dispose(): void {
+    this.shader.dispose();
+  }
+}
+
+type PositionInput = {
+  delta: number;
+  textureVelocity: THREE.Texture;
+  texturePosition: THREE.Texture;
+};
+class Position implements ComputeShader<PositionInput> {
+  private readonly shader = new THREE.ShaderMaterial({
+    uniforms: {
+      resolution: {
+        value: new THREE.Vector2(),
+      },
+      texturePosition: { value: null },
+      textureVelocity: { value: null },
+      delta: { value: 1 },
+    },
+    vertexShader: shaderParse(fboVert),
+    fragmentShader: shaderParse(positionFrag),
+    blending: THREE.NoBlending,
+    transparent: false,
+    depthWrite: false,
+    depthTest: false,
+  });
+
+  constructor(private readonly pass: Pass) {}
+
+  render({ delta, textureVelocity, texturePosition }: PositionInput): Render {
+    return (target) => {
+      this.shader.uniforms.delta!.value = delta;
+      this.shader.uniforms.textureVelocity!.value = textureVelocity;
+      this.shader.uniforms.texturePosition!.value = texturePosition;
+      this.pass.apply(this.shader)(target);
+    };
   }
 
-  private _updatePosition(): void {
-    const tmp = this._positionRenderTarget;
-    this._positionRenderTarget = this._positionRenderTarget2;
-    this._positionRenderTarget2 = tmp;
-
-    this._positionShader.uniforms.time!.value = this._time;
-    this._positionShader.uniforms.textureVelocity!.value =
-      this._velocityRenderTarget.texture;
-    this._positionShader.uniforms.texturePosition!.value =
-      this._positionRenderTarget2.texture;
-    this._passRenderer.render(
-      this._positionShader,
-      this._positionRenderTarget,
-    );
+  dispose(): void {
+    this.shader.dispose();
   }
+}
 
-  private createVelocityTexture(size: number): THREE.DataTexture {
-    return this.squareTexture(size, this.velocitySquare);
+function velocity(size: number): Float32Array {
+  const a = new Float32Array(size * size * 4);
+  for (let i = 0, len = a.length; i < len; i += 4) {
+    a[i] = 0;
+    a[i + 1] = 0;
+    a[i + 2] = 0;
+    a[i + 3] = ((~~(i / 4) % size) + 1) % size;
   }
+  return a;
+}
 
-  private velocitySquare(size: number): Float32Array {
-    const a = new Float32Array(size * size * 4);
-    for (let i = 0, len = a.length; i < len; i += 4) {
-      a[i] = 0;
-      a[i + 1] = 0;
-      a[i + 2] = 0;
-      a[i + 3] = ((~~(i / 4) % size) + 1) % size;
-    }
-    return a;
+function position(size: number): Float32Array {
+  const a = new Float32Array(size * size * 4);
+  for (let i = 0, len = a.length; i < len; i += 4) {
+    a[i] = (Math.random() - 0.5) * 1;
+    a[i + 1] = (Math.random() - 0.5) * 1;
+    a[i + 2] = (Math.random() - 0.5) * 1;
   }
+  return a;
+}
 
-  private createPositionTexture(size: number): THREE.DataTexture {
-    return this.squareTexture(size, this.positionSquare);
-  }
-
-  private positionSquare(size: number): Float32Array {
-    const a = new Float32Array(size * size * 4);
-    for (let i = 0, len = a.length; i < len; i += 4) {
-      a[i] = (Math.random() - 0.5) * 1;
-      a[i + 1] = (Math.random() - 0.5) * 1;
-      a[i + 2] = (Math.random() - 0.5) * 1;
-    }
-    return a;
-  }
-
-  private squareTexture(
-    size: number,
-    data: (size: number) => Float32Array,
-  ): THREE.DataTexture {
-    const texture = new THREE.DataTexture(
-      data(size),
-      size,
-      size,
-      THREE.RGBAFormat,
-      THREE.FloatType,
-    );
-    texture.minFilter = THREE.NearestFilter;
-    texture.magFilter = THREE.NearestFilter;
-    texture.needsUpdate = true;
-    texture.generateMipmaps = false;
-    texture.flipY = false;
-    return texture;
-  }
+function squareTexture(
+  size: number,
+  data: (size: number) => Float32Array,
+): THREE.DataTexture {
+  const texture = new THREE.DataTexture(
+    data(size),
+    size,
+    size,
+    THREE.RGBAFormat,
+    THREE.FloatType,
+  );
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.needsUpdate = true;
+  texture.generateMipmaps = false;
+  texture.flipY = false;
+  return texture;
 }
