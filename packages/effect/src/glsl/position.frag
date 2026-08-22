@@ -3,7 +3,6 @@ uniform vec2 resolution;
 uniform sampler2D textureVelocity;
 uniform sampler2D texturePosition;
 uniform float delta;
-uniform float time;
 
 const float INTERSECTION_PRECISION = 1.0;
 
