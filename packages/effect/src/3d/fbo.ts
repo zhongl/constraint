@@ -44,6 +44,7 @@ export function assertFboRenderer(
 
 export class Fbo {
   readonly textureSize: number;
+  readonly amount: number;
 
   private velocityBuffers!: PingPongBuffers;
   private positionBuffers!: PingPongBuffers;
@@ -54,6 +55,7 @@ export class Fbo {
 
   constructor(textureSize: number) {
     this.textureSize = textureSize;
+    this.amount = textureSize * textureSize;
   }
 
   init(renderer: FboRenderer): void {
