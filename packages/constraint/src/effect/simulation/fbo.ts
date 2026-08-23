@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import type { Renderer } from "../renderer";
-import shaderParse from "../helpers/shaderParse";
-import fboVert from "../glsl/fbo.vert";
-import fboThroughFrag from "../glsl/fboThrough.frag";
-import velocityFrag from "../glsl/velocity.frag";
-import positionFrag from "../glsl/position.frag";
+import type { Renderer } from "../../renderer";
+import shaderParse from "../../helpers/shaderParse";
+import fboVert from "./fbo.vert";
+import fboThroughFrag from "./fboThrough.frag";
+import velocityFrag from "./velocity.frag";
+import positionFrag from "./position.frag";
 import { PingPongBuffers } from "./pingpong";
 
 export class Fbo {

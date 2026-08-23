@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { requireRenderer } from './renderer';
 import { Environment } from './3d/environment';
-import { Fbo } from './3d/fbo';
+import { Fbo } from './effect/simulation/fbo';
 import { Lines } from './3d/lines';
 import { Nodes } from './3d/nodes';
 import type { ConstraintTuning } from './settings';
