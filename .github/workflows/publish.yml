@@ -6,15 +6,12 @@ on:
 
 permissions:
   contents: write
-  packages: write
+  id-token: write
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - uses: actions/checkout@v5
 
@@ -24,9 +21,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://npm.pkg.github.com
+          registry-url: https://registry.npmjs.org
           scope: '@tech-kn'
 
+      # npm Trusted Publishing requires npm 11.5.1 or newer.
+      - run: npm install --global npm@11.5.1
       - run: pnpm install --frozen-lockfile
       - name: Set package version from tag
         env:
@@ -38,7 +37,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter @tech-kn/constraint build
-      - run: pnpm --filter @tech-kn/constraint publish --no-git-checks
+      - name: Publish to npm
+        working-directory: packages/constraint
+        run: npm publish --access public
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

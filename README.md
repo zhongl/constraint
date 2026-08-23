@@ -10,14 +10,6 @@ See it in action at the [Constraint Demo](https://tech-kn.github.io/constraint/)
 
 ## Usage
 
-The package is published to GitHub Packages.
-
-Configure the registry in your project's `.npmrc`:
-
-```ini
-@tech-kn:registry=https://npm.pkg.github.com
-```
-
 Install the dependencies:
 
 ```bash
