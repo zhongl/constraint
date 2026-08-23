@@ -1,1 +1,1 @@
-export { ConstraintEffect } from './ConstraintEffect';
+export { ConstraintEffect, type ConstraintFrame } from './ConstraintEffect';

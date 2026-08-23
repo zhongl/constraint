@@ -111,7 +111,6 @@ class App {
     private _onMove(evt: MouseEvent | Touch): void {
         this._lastMouseMove = performance.now();
         this._isOverControls = evt.target instanceof Element && evt.target.closest('.lil-gui') !== null;
-        this._effect.followPointer = !this._isOverControls;
 
         this._mouse.x = (evt.pageX / this._width) * 2 - 1;
         this._mouse.y = -(evt.pageY / this._height) * 2 + 1;
@@ -135,7 +134,7 @@ class App {
 
     private _render(dt: number): void {
         const isMoving = performance.now() - this._lastMouseMove < this.followTimeout;
-        this._effect.followPointer = isMoving && !this._isOverControls;
+        const pointer = isMoving && !this._isOverControls ? this._ray.origin : null;
 
         this._initAnimation = Math.min(this._initAnimation + dt * 0.0002, 1);
         const zoomAnimation = Math.pow(this._initAnimation, 2);
@@ -148,7 +147,7 @@ class App {
         this._ray.direction.set(this._mouse.x, this._mouse.y, 0.5).unproject(this._camera).sub(this._ray.origin).normalize();
         const distance = this._ray.origin.length() / Math.cos(Math.PI - this._ray.direction.angleTo(this._ray.origin));
         this._ray.origin.add(this._ray.direction.multiplyScalar(distance * 0.9));
-        this._effect.update(dt, this._ray.origin);
+        this._effect.update({ dt, pointer });
 
         this._renderer.render(this._scene, this._camera);
 
