@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import shaderParse from '../helpers/shaderParse';
-import nodeVert from '../glsl/node.vert';
-import nodeFrag from '../glsl/node.frag';
-import * as math from '../utils/math';
+import shaderParse from '../../helpers/shaderParse';
+import nodeVert from './node.vert';
+import nodeFrag from './node.frag';
+import * as math from '../../utils/math';
 
 type NodeUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;

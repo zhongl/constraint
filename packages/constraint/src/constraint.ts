@@ -2,8 +2,8 @@ import * as THREE from 'three';
 import { requireRenderer } from './renderer';
 import { Environment } from './effect/scene/environment';
 import { Fbo } from './effect/simulation/fbo';
-import { Lines } from './3d/lines';
-import { Nodes } from './3d/nodes';
+import { Lines } from './effect/renderables/lines';
+import { Nodes } from './effect/renderables/nodes';
 import type { ConstraintTuning } from './settings';
 
 export interface ConstraintOptions {
