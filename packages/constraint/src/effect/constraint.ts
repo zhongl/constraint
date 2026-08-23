@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { requireRenderer } from './three/renderer-capability';
-import { Environment } from './effect/scene/environment';
-import { Fbo } from './effect/simulation/fbo';
-import { Lines } from './effect/renderables/lines';
-import { Nodes } from './effect/renderables/nodes';
-import type { ConstraintTuning } from './settings';
+import { requireRenderer } from '../three/renderer-capability';
+import { Environment } from './scene/environment';
+import { Fbo } from './simulation/fbo';
+import { Lines } from './renderables/lines';
+import { Nodes } from './renderables/nodes';
+import type { ConstraintTuning } from '../settings';
 
 export interface ConstraintOptions {
     textureSize: number;

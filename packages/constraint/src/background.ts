@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Constraint } from './constraint';
+import { Constraint } from './effect/constraint';
 import { createConstraintTuning, type ConstraintTuning } from './settings';
 
 export interface PointerOptions {
