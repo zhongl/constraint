@@ -1,2 +1,2 @@
 export { Constraint, type Frame } from './constraint';
-export type { Appearance, Motion } from './settings';
+export { createConstraintTuning, type Appearance, type ConstraintTuning, type Motion } from './settings';
