@@ -58,18 +58,18 @@ class App {
 
         this._gui = new GUI();
         const linesGui = this._gui.addFolder('Motion');
-        linesGui.add(this._effect, 'constraintRatio', 0, 0.15).name('constraint ratio');
-        linesGui.add(this._effect, 'simulationSpeed', 0, 3).name('simulation speed');
+        linesGui.add(this._effect.motion, 'constraintRatio', 0, 0.15).name('constraint ratio');
+        linesGui.add(this._effect.motion, 'simulationSpeed', 0, 3).name('simulation speed');
         linesGui.add(this, 'followTimeout', 100, 1000, 10).name('follow timeout (ms)');
 
         const envGui = this._gui.addFolder('Rendering');
-        envGui.add(this._effect, 'useLightNodes').name('light nodes');
-        envGui.add(this._effect, 'isLight').name('light mode').listen();
-        envGui.addColor(this._effect, 'backgroundDark').name('background dark');
-        envGui.addColor(this._effect, 'backgroundLight').name('background light');
-        envGui.addColor(this._effect, 'groundDark').name('ground dark');
-        envGui.addColor(this._effect, 'groundLight').name('ground light');
-        envGui.add(this._effect, 'fogDensity', 0, 0.01).name('fog density');
+        envGui.add(this._effect.appearance, 'showLightNodes').name('light nodes');
+        envGui.add(this._effect.appearance, 'lightMode').name('light mode').listen();
+        envGui.addColor(this._effect.appearance, 'backgroundDark').name('background dark');
+        envGui.addColor(this._effect.appearance, 'backgroundLight').name('background light');
+        envGui.addColor(this._effect.appearance, 'groundDark').name('ground dark');
+        envGui.addColor(this._effect.appearance, 'groundLight').name('ground light');
+        envGui.add(this._effect.appearance, 'fogDensity', 0, 0.01).name('fog density');
 
         const preventDefault = (evt: KeyboardEvent) => {
             evt.preventDefault();
@@ -98,7 +98,7 @@ class App {
 
     private _onKeyUp(evt: KeyboardEvent): void {
         if (evt.keyCode === 32) {
-            this._effect.isLight = !this._effect.isLight;
+            this._effect.appearance.lightMode = !this._effect.appearance.lightMode;
         }
     }
 
@@ -151,7 +151,7 @@ class App {
 
         this._renderer.render(this._scene, this._camera);
 
-        document.documentElement.classList.toggle('is-light', this._effect.isLight);
+        document.documentElement.classList.toggle('is-light', this._effect.appearance.lightMode);
     }
 }
 
