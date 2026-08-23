@@ -15,6 +15,11 @@ export interface ConstraintBackgroundOptions {
     tuning?: ConstraintTuning;
 }
 
+type Pointer = {
+    options: PointerOptions;
+    target: HTMLElement;
+} | null;
+
 export class ConstraintBackground {
     private readonly renderer: THREE.WebGLRenderer;
     private readonly scene = new THREE.Scene();
@@ -23,8 +28,7 @@ export class ConstraintBackground {
     private readonly constraint: Constraint;
     private readonly host: HTMLElement;
     private readonly tuning: ConstraintTuning;
-    private readonly pointer: PointerOptions | null;
-    private readonly pointerTarget: HTMLElement | null;
+    private readonly pointer: Pointer;
     private readonly resizeObserver: ResizeObserver;
     private readonly mouse = new THREE.Vector2();
     private readonly ray = new THREE.Ray();
@@ -59,43 +63,13 @@ export class ConstraintBackground {
 
     constructor(host: HTMLElement, options: ConstraintBackgroundOptions = {}) {
         this.host = host;
-        this.tuning = options.tuning ?? createConstraintTuning();
-        if (options.theme !== undefined) {
-            this.tuning.appearance.lightMode = options.theme === 'light';
-        }
+        this.tuning = createTuning(options);
+        this.pointer = createPointer(host, options.pointer);
+        this.renderer = createRenderer(host);
 
-        if (options.pointer === false) {
-            this.pointer = null;
-            this.pointerTarget = null;
-        } else {
-            const pointer = options.pointer ?? {};
-            this.pointer = pointer;
-            this.pointerTarget = pointer.target ?? host;
-        }
-
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.debug.checkShaderErrors = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap;
-        this.renderer.shadowMap.enabled = true;
-        host.appendChild(this.renderer.domElement);
-
-        this.camera.position.set(0, 500, 1200).normalize().multiplyScalar(1500);
-
-        this.control = new OrbitControls(this.camera, this.renderer.domElement);
-        this.control.minDistance = 600;
-        this.control.maxDistance = 1500;
-        this.control.minPolarAngle = 0.3;
-        this.control.maxPolarAngle = Math.PI / 2;
-        this.control.target.y = -30;
-        this.control.enablePan = false;
-        this.control.update();
-
-        this.constraint = new Constraint(this.renderer, this.scene, {
-            textureSize: 32,
-            lineAmount: 1024 * 16,
-            tuning: this.tuning
-        });
-
+        configureCamera(this.camera);
+        this.control = createControls(this.camera, this.renderer.domElement);
+        this.constraint = createConstraint(this.renderer, this.scene, this.tuning);
         this.resizeObserver = new ResizeObserver(this.onResize);
         this.start();
     }
@@ -103,8 +77,8 @@ export class ConstraintBackground {
     dispose(): void {
         window.cancelAnimationFrame(this.animationFrame);
         this.resizeObserver.disconnect();
-        this.pointerTarget?.removeEventListener('pointermove', this.onPointerMove, true);
-        this.pointerTarget?.removeEventListener('pointerleave', this.clearPointer);
+        this.pointer?.target.removeEventListener('pointermove', this.onPointerMove, true);
+        this.pointer?.target.removeEventListener('pointerleave', this.clearPointer);
         this.constraint.dispose();
         this.control.dispose();
         this.renderer.dispose();
@@ -113,15 +87,15 @@ export class ConstraintBackground {
 
     private start(): void {
         this.resizeObserver.observe(this.host);
-        this.pointerTarget?.addEventListener('pointermove', this.onPointerMove, true);
-        this.pointerTarget?.addEventListener('pointerleave', this.clearPointer);
+        this.pointer?.target.addEventListener('pointermove', this.onPointerMove, true);
+        this.pointer?.target.addEventListener('pointerleave', this.clearPointer);
         this.time = Date.now();
         this.onResize();
         this.loop();
     }
 
     private isPointerIgnored(target: EventTarget | null): boolean {
-        return target instanceof Element && target.closest(this.pointer?.ignoreSelector ?? '[data-constraint-ignore-pointer]') !== null;
+        return target instanceof Element && target.closest(this.pointer?.options.ignoreSelector ?? '[data-constraint-ignore-pointer]') !== null;
     }
 
     private readonly loop = (): void => {
@@ -150,7 +124,7 @@ export class ConstraintBackground {
     }
 
     private resolvePointer(): THREE.Vector3 | null {
-        if (performance.now() - this.lastPointerMove >= (this.pointer?.idleTimeout ?? 500)) {
+        if (performance.now() - this.lastPointerMove >= (this.pointer?.options.idleTimeout ?? 500)) {
             return null;
         }
 
@@ -159,4 +133,56 @@ export class ConstraintBackground {
         const distance = this.ray.origin.length() / Math.cos(Math.PI - this.ray.direction.angleTo(this.ray.origin));
         return this.ray.origin.add(this.ray.direction.multiplyScalar(distance * 0.9));
     }
+}
+
+function createTuning(options: ConstraintBackgroundOptions): ConstraintTuning {
+    const tuning = options.tuning ?? createConstraintTuning();
+    if (options.theme !== undefined) {
+        tuning.appearance.lightMode = options.theme === 'light';
+    }
+    return tuning;
+}
+
+function createPointer(host: HTMLElement, options: false | PointerOptions | undefined): Pointer {
+    if (options === false) return null;
+
+    const pointer = options ?? {};
+    return { options: pointer, target: pointer.target ?? host };
+}
+
+function createRenderer(host: HTMLElement): THREE.WebGLRenderer {
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.debug.checkShaderErrors = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.shadowMap.enabled = true;
+    host.appendChild(renderer.domElement);
+    return renderer;
+}
+
+function configureCamera(camera: THREE.PerspectiveCamera): void {
+    camera.position.set(0, 500, 1200).normalize().multiplyScalar(1500);
+}
+
+function createControls(camera: THREE.PerspectiveCamera, canvas: HTMLCanvasElement): OrbitControls {
+    const control = new OrbitControls(camera, canvas);
+    control.minDistance = 600;
+    control.maxDistance = 1500;
+    control.minPolarAngle = 0.3;
+    control.maxPolarAngle = Math.PI / 2;
+    control.target.y = -30;
+    control.enablePan = false;
+    control.update();
+    return control;
+}
+
+function createConstraint(
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    tuning: ConstraintTuning
+): Constraint {
+    return new Constraint(renderer, scene, {
+        textureSize: 32,
+        lineAmount: 1024 * 16,
+        tuning
+    });
 }
