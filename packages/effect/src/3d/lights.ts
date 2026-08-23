@@ -23,22 +23,8 @@ function createSpotLight(): THREE.SpotLight {
 
     spot.shadow.camera.near = 100;
     spot.shadow.camera.far = 2500;
-    spot.shadow.camera.fov = 90;
-    spot.shadow.camera.updateProjectionMatrix();
-    preserveLegacyShadowCamera(spot);
+    spot.shadow.focus = 0.5;
     spot.shadow.bias = 0;
     spot.shadow.mapSize.set(1024, 2048);
     return spot;
-}
-
-function preserveLegacyShadowCamera(spot: THREE.SpotLight): void {
-    const updateMatrices = spot.shadow.updateMatrices;
-    spot.shadow.updateMatrices = function(light: THREE.Light) {
-        const { angle, distance } = spot;
-        spot.angle = Math.PI / 4;
-        spot.distance = 2500;
-        updateMatrices.call(this, light);
-        spot.angle = angle;
-        spot.distance = distance;
-    };
 }
