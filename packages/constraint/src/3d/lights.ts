@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export class ConstraintLights {
+export class Lights {
     readonly mesh = new THREE.Object3D();
 
     private readonly spot = createSpotLight();

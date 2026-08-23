@@ -18,7 +18,7 @@ pnpm dev:effect
 pnpm dev
 ```
 
-Demo 始终消费 `@constraint/effect` 的构建产物；修改 effect 源码后，watch 任务会更新 `packages/effect/dist`。
+Demo 始终消费 `@constraint/effect` 的构建产物；修改 effect 源码后，watch 任务会更新 `packages/constraint/dist`。
 
 ## License
 This experiment is under MIT License.

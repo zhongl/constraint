@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { ConstraintRenderer } from "../ConstraintRenderer";
+import type { Renderer } from "../renderer";
 import shaderParse from "../helpers/shaderParse";
 import fboVert from "../glsl/fbo.vert";
 import fboThroughFrag from "../glsl/fboThrough.frag";
@@ -18,7 +18,7 @@ export class Fbo {
   private readonly position: Position;
   private readonly geometry: THREE.PlaneGeometry;
 
-  constructor(textureSize: number, renderer: ConstraintRenderer) {
+  constructor(textureSize: number, renderer: Renderer) {
     this.textureSize = textureSize;
     this.amount = textureSize * textureSize;
     this.velocityBuffers = new PingPongBuffers(textureSize);

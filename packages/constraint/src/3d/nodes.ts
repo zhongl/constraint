@@ -9,7 +9,7 @@ type NodeUniforms = Record<string, THREE.IUniform> & {
     alpha: THREE.IUniform<number>;
 };
 
-export class ConstraintNodes {
+export class Nodes {
     readonly mesh: THREE.Points;
 
     private readonly material: THREE.ShaderMaterial;

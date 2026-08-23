@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export class ConstraintGround {
+export class Ground {
     readonly mesh: THREE.Mesh;
 
     private readonly groundDark = new THREE.Color();

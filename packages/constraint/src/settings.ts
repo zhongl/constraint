@@ -1,9 +1,9 @@
-export interface ConstraintMotion {
+export interface Motion {
     constraintRatio: number;
     simulationSpeed: number;
 }
 
-export interface ConstraintAppearance {
+export interface Appearance {
     showLightNodes: boolean;
     lightMode: boolean;
     backgroundDark: string;
