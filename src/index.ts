@@ -1,16 +1,13 @@
 import './styles/normalize.css';
 import './styles/index.css';
-import { ConstraintBackground, createConstraintTuning } from '@constraint/effect';
+import { ConstraintBackground, createConstraintTuning, type PointerOptions } from '@constraint/effect';
 import { mountDebugPanel } from './debug-panel';
 
 class App {
     private readonly tuning = createConstraintTuning();
+    private readonly pointer: PointerOptions = { idleTimeout: 500 };
     private readonly background: ConstraintBackground;
     private readonly disposeDebugPanel: () => void;
-
-    private readonly isPointerIgnored = (target: EventTarget | null): boolean => {
-        return target instanceof Element && target.closest('.lil-gui') !== null;
-    };
 
     private readonly onKeyUp = (evt: KeyboardEvent): void => {
         if (evt.key === ' ') {
@@ -26,12 +23,11 @@ class App {
     constructor() {
         this.background = new ConstraintBackground(document.body, {
             tuning: this.tuning,
-            followTimeout: 500,
-            isPointerIgnored: this.isPointerIgnored
+            pointer: this.pointer
         });
         this.disposeDebugPanel = mountDebugPanel({
             tuning: this.tuning,
-            background: this.background,
+            pointer: this.pointer,
             syncTheme: this.syncTheme
         });
         document.addEventListener('keyup', this.onKeyUp);
