@@ -55,7 +55,6 @@ class App {
             textureSize: 32,
             lineAmount: 1024 * 16
         });
-        this._effect.init();
 
         this._gui = new GUI();
         const linesGui = this._gui.addFolder('Motion');
@@ -149,7 +148,7 @@ class App {
         this._ray.direction.set(this._mouse.x, this._mouse.y, 0.5).unproject(this._camera).sub(this._ray.origin).normalize();
         const distance = this._ray.origin.length() / Math.cos(Math.PI - this._ray.direction.angleTo(this._ray.origin));
         this._ray.origin.add(this._ray.direction.multiplyScalar(distance * 0.9));
-        this._effect.update(dt, this._camera, this._ray.origin);
+        this._effect.update(dt, this._ray.origin);
 
         this._renderer.render(this._scene, this._camera);
 

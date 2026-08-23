@@ -14,6 +14,9 @@ export interface ConstraintEffectOptions {
 export class ConstraintEffect {
     private readonly _renderer: ConstraintRenderer;
     private readonly _scene: THREE.Scene;
+    private readonly _previousFog: THREE.Fog | THREE.FogExp2 | null;
+    private readonly _previousClearColor: THREE.Color;
+    private readonly _previousClearAlpha: number;
     private readonly _fog: THREE.FogExp2;
     private readonly _backgroundDark = new THREE.Color();
     private readonly _backgroundLight = new THREE.Color();
@@ -43,12 +46,18 @@ export class ConstraintEffect {
     ) {
         this._renderer = requireConstraintRenderer(renderer);
         this._scene = scene;
+        this._previousFog = scene.fog;
+        this._previousClearColor = renderer.getClearColor(new THREE.Color());
+        this._previousClearAlpha = renderer.getClearAlpha();
         this._fog = new THREE.FogExp2(this._backgroundDarkValue, this._fogDensity);
         this._fbo = new Fbo(options.textureSize, this._renderer);
         this._lights = new ConstraintLights();
         this._lines = new ConstraintLines(options.lineAmount, options.textureSize);
         this._nodes = new ConstraintNodes(options.textureSize);
         this._ground = new ConstraintGround();
+
+        this._scene.fog = this._fog;
+        this._scene.add(this._lights.mesh, this._lines.mesh, this._nodes.mesh, this._ground.mesh);
     }
 
     get constraintRatio(): number { return this._constraintRatio; }
@@ -81,14 +90,6 @@ export class ConstraintEffect {
     get fogDensity(): number { return this._fogDensity; }
     set fogDensity(value: number) { this._fogDensity = value; }
 
-    init(): void {
-        this._scene.fog = this._fog;
-        this._scene.add(this._lights.mesh);
-        this._scene.add(this._lines.mesh);
-        this._scene.add(this._nodes.mesh);
-        this._scene.add(this._ground.mesh);
-    }
-
     dispose(): void {
         this._scene.remove(this._lights.mesh, this._lines.mesh, this._nodes.mesh, this._ground.mesh);
         this._lights.dispose();
@@ -96,13 +97,11 @@ export class ConstraintEffect {
         this._nodes.dispose();
         this._ground.dispose();
         this._fbo.dispose();
+        this._scene.fog = this._previousFog;
+        this._renderer.setClearColor(this._previousClearColor, this._previousClearAlpha);
     }
 
-    update(
-        dt: number,
-        camera: THREE.PerspectiveCamera,
-        mouse3d: Readonly<THREE.Vector3>
-    ): void {
+    update(dt: number, mouse3d: Readonly<THREE.Vector3>): void {
         this._lightRatio += ((this._isLight ? 1 : 0) - this._lightRatio) * 0.2;
         this._lightNodesRatio += ((this._useLightNodes ? 1 : 0) - this._lightNodesRatio) * 0.1;
 
