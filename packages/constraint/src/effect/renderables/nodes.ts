@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import shaderParse from '../../helpers/shaderParse';
+import shaderParse from '../../three/shader-source';
 import nodeVert from './node.vert';
 import nodeFrag from './node.frag';
 import * as math from '../../utils/math';

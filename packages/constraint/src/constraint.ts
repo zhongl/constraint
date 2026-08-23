@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { requireRenderer } from './renderer';
+import { requireRenderer } from './three/renderer-capability';
 import { Environment } from './effect/scene/environment';
 import { Fbo } from './effect/simulation/fbo';
 import { Lines } from './effect/renderables/lines';

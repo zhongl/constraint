@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import type { Renderer } from "../../renderer";
-import shaderParse from "../../helpers/shaderParse";
+import type { Renderer } from "../../three/renderer-capability";
+import shaderParse from "../../three/shader-source";
 import fboVert from "./fbo.vert";
 import fboThroughFrag from "./fboThrough.frag";
 import velocityFrag from "./velocity.frag";
