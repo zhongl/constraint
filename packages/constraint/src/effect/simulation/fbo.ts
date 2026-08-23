@@ -6,11 +6,9 @@ import fboThroughFrag from "./fboThrough.frag";
 import velocityFrag from "./velocity.frag";
 import positionFrag from "./position.frag";
 import { PingPongBuffers } from "./pingpong";
+import { NodeLayout } from "../node-layout";
 
 export class Fbo {
-  readonly textureSize: number;
-  readonly amount: number;
-
   private readonly velocityBuffers: PingPongBuffers;
   private readonly positionBuffers: PingPongBuffers;
 
@@ -18,17 +16,15 @@ export class Fbo {
   private readonly position: Position;
   private readonly geometry: THREE.PlaneGeometry;
 
-  constructor(textureSize: number, renderer: Renderer) {
-    this.textureSize = textureSize;
-    this.amount = textureSize * textureSize;
-    this.velocityBuffers = new PingPongBuffers(textureSize);
-    this.positionBuffers = new PingPongBuffers(textureSize);
+  constructor(layout: NodeLayout, renderer: Renderer) {
+    this.velocityBuffers = new PingPongBuffers(layout.size);
+    this.positionBuffers = new PingPongBuffers(layout.size);
     this.geometry = new THREE.PlaneGeometry(2, 2);
     const pass = new Pass(this.geometry, renderer);
     const copy = new Copy(pass);
 
-    this.velocityBuffers.write(copy.render(squareTexture(textureSize, velocity)));
-    this.positionBuffers.write(copy.render(squareTexture(textureSize, position)));
+    this.velocityBuffers.write(copy.render(squareTexture(layout, velocity)));
+    this.positionBuffers.write(copy.render(squareTexture(layout, position)));
 
     copy.dispose();
 
@@ -224,19 +220,19 @@ class Position implements ComputeShader<PositionInput> {
   }
 }
 
-function velocity(size: number): Float32Array {
-  const a = new Float32Array(size * size * 4);
+function velocity(layout: NodeLayout): Float32Array {
+  const a = new Float32Array(layout.amount * 4);
   for (let i = 0, len = a.length; i < len; i += 4) {
     a[i] = 0;
     a[i + 1] = 0;
     a[i + 2] = 0;
-    a[i + 3] = ((~~(i / 4) % size) + 1) % size;
+    a[i + 3] = ((~~(i / 4) % layout.size) + 1) % layout.size;
   }
   return a;
 }
 
-function position(size: number): Float32Array {
-  const a = new Float32Array(size * size * 4);
+function position(layout: NodeLayout): Float32Array {
+  const a = new Float32Array(layout.amount * 4);
   for (let i = 0, len = a.length; i < len; i += 4) {
     a[i] = (Math.random() - 0.5) * 1;
     a[i + 1] = (Math.random() - 0.5) * 1;
@@ -245,8 +241,8 @@ function position(size: number): Float32Array {
   return a;
 }
 
-function squareTexture(size: number, data: (size: number) => Float32Array): THREE.DataTexture {
-  const texture = new THREE.DataTexture(data(size), size, size, THREE.RGBAFormat, THREE.FloatType);
+function squareTexture(layout: NodeLayout, data: (layout: NodeLayout) => Float32Array): THREE.DataTexture {
+  const texture = new THREE.DataTexture(data(layout), layout.size, layout.size, THREE.RGBAFormat, THREE.FloatType);
   texture.minFilter = THREE.NearestFilter;
   texture.magFilter = THREE.NearestFilter;
   texture.needsUpdate = true;

@@ -4,6 +4,7 @@ import { Environment } from './scene/environment';
 import { Fbo } from './simulation/fbo';
 import { Lines } from './renderables/lines';
 import { Nodes } from './renderables/nodes';
+import { NodeLayout } from './node-layout';
 import type { ConstraintTuning } from '../tuning';
 
 export interface ConstraintOptions {
@@ -31,11 +32,12 @@ export class Constraint {
         options: ConstraintOptions
     ) {
         const rendererCapability = requireRenderer(renderer);
+        const layout = new NodeLayout(options.textureSize);
         this.scene = scene;
         this.tuning = options.tuning;
-        this.fbo = new Fbo(options.textureSize, rendererCapability);
-        this.lines = new Lines(options.lineAmount, options.textureSize);
-        this.nodes = new Nodes(options.textureSize);
+        this.fbo = new Fbo(layout, rendererCapability);
+        this.lines = new Lines(options.lineAmount, layout);
+        this.nodes = new Nodes(layout);
         this.environment = new Environment(renderer, scene, this.tuning.appearance);
         this.scene.add(this.lines.mesh, this.nodes.mesh);
     }
