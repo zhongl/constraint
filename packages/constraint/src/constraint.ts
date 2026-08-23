@@ -1,28 +1,28 @@
 import * as THREE from 'three';
-import { requireConstraintRenderer } from './ConstraintRenderer';
-import { ConstraintEnvironment } from './3d/environment';
+import { requireRenderer } from './renderer';
+import { Environment } from './3d/environment';
 import { Fbo } from './3d/fbo';
-import { ConstraintLines } from './3d/lines';
-import { ConstraintNodes } from './3d/nodes';
-import type { ConstraintAppearance, ConstraintMotion } from './settings';
+import { Lines } from './3d/lines';
+import { Nodes } from './3d/nodes';
+import type { Appearance, Motion } from './settings';
 
-export interface ConstraintEffectOptions {
+export interface ConstraintOptions {
     textureSize: number;
     lineAmount: number;
 }
 
-export interface ConstraintFrame {
+export interface Frame {
     dt: number;
     pointer: Readonly<THREE.Vector3> | null;
 }
 
-export class ConstraintEffect {
-    readonly motion: ConstraintMotion = {
+export class Constraint {
+    readonly motion: Motion = {
         constraintRatio: 0.07,
         simulationSpeed: 1
     };
 
-    readonly appearance: ConstraintAppearance = {
+    readonly appearance: Appearance = {
         showLightNodes: false,
         lightMode: false,
         backgroundDark: '#222222',
@@ -33,22 +33,22 @@ export class ConstraintEffect {
     };
 
     private readonly scene: THREE.Scene;
-    private readonly environment: ConstraintEnvironment;
+    private readonly environment: Environment;
     private readonly fbo: Fbo;
-    private readonly lines: ConstraintLines;
-    private readonly nodes: ConstraintNodes;
+    private readonly lines: Lines;
+    private readonly nodes: Nodes;
 
     constructor(
         renderer: THREE.WebGLRenderer,
         scene: THREE.Scene,
-        options: ConstraintEffectOptions
+        options: ConstraintOptions
     ) {
-        const constraintRenderer = requireConstraintRenderer(renderer);
+        const rendererCapability = requireRenderer(renderer);
         this.scene = scene;
-        this.fbo = new Fbo(options.textureSize, constraintRenderer);
-        this.lines = new ConstraintLines(options.lineAmount, options.textureSize);
-        this.nodes = new ConstraintNodes(options.textureSize);
-        this.environment = new ConstraintEnvironment(renderer, scene, this.appearance);
+        this.fbo = new Fbo(options.textureSize, rendererCapability);
+        this.lines = new Lines(options.lineAmount, options.textureSize);
+        this.nodes = new Nodes(options.textureSize);
+        this.environment = new Environment(renderer, scene, this.appearance);
         this.scene.add(this.lines.mesh, this.nodes.mesh);
     }
 
@@ -60,7 +60,7 @@ export class ConstraintEffect {
         this.environment.dispose();
     }
 
-    update(frame: ConstraintFrame): void {
+    update(frame: Frame): void {
         const environment = this.environment.update(this.appearance);
         const positionTexture = this.fbo.update(
             frame.dt,

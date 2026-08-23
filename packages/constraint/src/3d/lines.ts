@@ -12,7 +12,7 @@ type LineUniforms = Record<string, THREE.IUniform> & {
     lightRatio: THREE.IUniform<number>;
 };
 
-export class ConstraintLines {
+export class Lines {
     readonly mesh: THREE.LineSegments;
 
     private readonly material: THREE.ShaderMaterial;

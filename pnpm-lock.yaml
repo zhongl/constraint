@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@constraint/effect':
         specifier: workspace:*
-        version: link:packages/effect
+        version: link:packages/constraint
       lil-gui:
         specifier: ^0.21.0
         version: 0.21.0
@@ -37,7 +37,7 @@ importers:
         specifier: ^8.2.1
         version: 8.2.1
 
-  packages/effect:
+  packages/constraint:
     dependencies:
       glsl-noise:
         specifier: ^0.0.0

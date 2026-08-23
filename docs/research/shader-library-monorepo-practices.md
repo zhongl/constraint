@@ -81,10 +81,10 @@ Demo 明确选择：
 
 ```ts
 // 发布路径验收
-import { ConstraintEffect } from '@constraint/effect';
+import { Constraint } from '@constraint/effect';
 
 // 内部源码开发路径（需要 Demo 的 GLSL plugin）
-import { ConstraintEffect } from '@constraint/effect/source';
+import { Constraint } from '@constraint/effect/source';
 ```
 
 **优点**
@@ -164,14 +164,14 @@ Rollup 官方文档说明，`external` 用于告诉 bundler 某些依赖不应�
 采用 **方案 B：包构建产物优先，包内封装 GLSL**：
 
 ```text
-packages/effect/
+packages/constraint/
 ├── src/                  # 内部实现和 GLSL 源码
 ├── dist/                 # 包构建结果，不提交 Git
 ├── vite.config.mjs       # 唯一的 GLSL 处理位置
 └── package.json
 ```
 
-`packages/effect/package.json` 建议：
+`packages/constraint/package.json` 建议：
 
 ```json
 {
@@ -208,7 +208,7 @@ packages/effect/
 更好的包开发体验：
 
 ```json
-// packages/effect/package.json
+// packages/constraint/package.json
 {
   "scripts": {
     "build": "vite build && tsc --emitDeclarationOnly ...",
