@@ -47,7 +47,7 @@ export class ConstraintEffect {
         this._renderer = requireConstraintRenderer(renderer);
         this._scene = scene;
         this._fog = new THREE.FogExp2(this._backgroundDarkValue, this._fogDensity);
-        this._fbo = new Fbo(options.textureSize);
+        this._fbo = new Fbo(options.textureSize, this._renderer);
         this._lights = new ConstraintLights();
         this._lines = new ConstraintLines(options.lineAmount, this._fbo);
         this._nodes = new ConstraintNodes(this._fbo);
@@ -86,8 +86,6 @@ export class ConstraintEffect {
     set fogDensity(value: number) { this._fogDensity = value; }
 
     init(): void {
-        this._fbo.init(this._renderer);
-
         this._ignoredMaterial = new THREE.Material();
 
         const ignoredMaterial = this._ignoredMaterial;

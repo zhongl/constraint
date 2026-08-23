@@ -11,32 +11,29 @@ export class Fbo {
   readonly textureSize: number;
   readonly amount: number;
 
-  private velocityBuffers!: PingPongBuffers;
-  private positionBuffers!: PingPongBuffers;
+  private velocityBuffers: PingPongBuffers;
+  private positionBuffers: PingPongBuffers;
 
-  private velocity!: Velocity;
-  private position!: Position;
-  private geometry!: THREE.PlaneGeometry;
+  private readonly velocity: Velocity;
+  private readonly position: Position;
+  private readonly geometry: THREE.PlaneGeometry;
 
-  constructor(textureSize: number) {
+  constructor(textureSize: number, renderer: ConstraintRenderer) {
     this.textureSize = textureSize;
     this.amount = textureSize * textureSize;
-  }
-
-  init(renderer: ConstraintRenderer): void {
-    this.velocityBuffers = PingPongBuffers.create(this.textureSize);
-    this.positionBuffers = PingPongBuffers.create(this.textureSize);
+    this.velocityBuffers = PingPongBuffers.create(textureSize);
+    this.positionBuffers = PingPongBuffers.create(textureSize);
     this.geometry = new THREE.PlaneGeometry(2, 2);
     const pass = new Pass(this.geometry, renderer);
     const copy = new Copy(pass);
 
     this.velocityBuffers = PingPongBuffers.write(
       this.velocityBuffers,
-      copy.render(squareTexture(this.textureSize, velocity)),
+      copy.render(squareTexture(textureSize, velocity)),
     );
     this.positionBuffers = PingPongBuffers.write(
       this.positionBuffers,
-      copy.render(squareTexture(this.textureSize, position)),
+      copy.render(squareTexture(textureSize, position)),
     );
 
     copy.dispose();
