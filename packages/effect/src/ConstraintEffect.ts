@@ -22,9 +22,6 @@ export class ConstraintEffect {
     private readonly _nodes: ConstraintNodes;
     private readonly _ground: ConstraintGround;
     private readonly _lights: ConstraintLights;
-    private readonly _skybox: THREE.Mesh;
-    private _originalRenderBufferDirect!: THREE.WebGLRenderer['renderBufferDirect'];
-    private _ignoredMaterial!: THREE.Material;
 
     private _constraintRatio = 0.07;
     private _simulationSpeed = 1;
@@ -52,7 +49,6 @@ export class ConstraintEffect {
         this._lines = new ConstraintLines(options.lineAmount, options.textureSize);
         this._nodes = new ConstraintNodes(options.textureSize);
         this._ground = new ConstraintGround();
-        this._skybox = new THREE.Mesh(new THREE.IcosahedronGeometry(128, 2));
     }
 
     get constraintRatio(): number { return this._constraintRatio; }
@@ -86,42 +82,20 @@ export class ConstraintEffect {
     set fogDensity(value: number) { this._fogDensity = value; }
 
     init(): void {
-        this._ignoredMaterial = new THREE.Material();
-
-        const ignoredMaterial = this._ignoredMaterial;
-        const fn = this._renderer.renderBufferDirect;
-        this._originalRenderBufferDirect = fn;
-        this._renderer.renderBufferDirect = function(camera, scene, geometry, material, object, group) {
-            if (material !== ignoredMaterial) {
-                fn.call(this, camera, scene, geometry, material, object, group);
-            }
-        };
-
         this._scene.fog = this._fog;
-
-
         this._scene.add(this._lights.mesh);
         this._scene.add(this._lines.mesh);
         this._scene.add(this._nodes.mesh);
         this._scene.add(this._ground.mesh);
-
-        this._skybox.material = ignoredMaterial;
-        this._skybox.renderOrder = -1024;
-        this._skybox.frustumCulled = false;
-        this._scene.add(this._skybox);
-
     }
 
     dispose(): void {
-        this._scene.remove(this._lights.mesh, this._lines.mesh, this._nodes.mesh, this._ground.mesh, this._skybox);
+        this._scene.remove(this._lights.mesh, this._lines.mesh, this._nodes.mesh, this._ground.mesh);
         this._lights.dispose();
         this._lines.dispose();
         this._nodes.dispose();
         this._ground.dispose();
         this._fbo.dispose();
-        this._skybox.geometry.dispose();
-        this._ignoredMaterial.dispose();
-        this._renderer.renderBufferDirect = this._originalRenderBufferDirect;
     }
 
     update(
@@ -137,7 +111,6 @@ export class ConstraintEffect {
         this._fog.color.copy(this._backgroundDark).lerp(this._backgroundLight, this._lightRatio);
         this._fog.density = this._fogDensity;
         this._renderer.setClearColor(this._fog.color.getHex());
-        this._skybox.position.copy(camera.position);
 
         const positionTexture = this._fbo.update(
             dt,
