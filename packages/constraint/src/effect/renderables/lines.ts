@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import shaderParse from '../helpers/shaderParse';
-import linesVert from '../glsl/lines.vert';
-import linesFrag from '../glsl/lines.frag';
-import lineDepthVert from '../glsl/lineDepth.vert';
-import lineDepthFrag from '../glsl/lineDepth.frag';
-import * as math from '../utils/math';
+import shaderParse from '../../helpers/shaderParse';
+import linesVert from './lines.vert';
+import linesFrag from './lines.frag';
+import lineDepthVert from './lineDepth.vert';
+import lineDepthFrag from './lineDepth.frag';
+import * as math from '../../utils/math';
 
 type LineUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;
