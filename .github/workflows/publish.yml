@@ -5,7 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -37,3 +37,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm --filter @tech-kn/constraint build
       - run: pnpm --filter @tech-kn/constraint publish --no-git-checks
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes
