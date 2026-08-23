@@ -4,58 +4,25 @@ import linesVert from '../glsl/lines.vert';
 import linesFrag from '../glsl/lines.frag';
 import lineDepthVert from '../glsl/lineDepth.vert';
 import lineDepthFrag from '../glsl/lineDepth.frag';
-import type { Fbo } from './fbo';
 import * as math from '../utils/math';
 
+type LineUniforms = Record<string, THREE.IUniform> & {
+    texturePosition: THREE.IUniform<THREE.Texture | null>;
+    lightNodesRatio: THREE.IUniform<number>;
+    lightRatio: THREE.IUniform<number>;
+};
+
 export class ConstraintLines {
-    mesh!: THREE.LineSegments;
+    readonly mesh: THREE.LineSegments;
 
-    private readonly _fbo: Fbo;
-    private _material!: THREE.ShaderMaterial;
-    private _depthMaterial!: THREE.ShaderMaterial;
+    private readonly material: THREE.ShaderMaterial;
+    private readonly depthMaterial: THREE.ShaderMaterial;
+    private readonly uniforms: LineUniforms;
 
-    constructor(
-        private readonly _lineAmount: number,
-        fbo: Fbo
-    ) {
-        this._fbo = fbo;
-    }
-
-    init(): void {
-        const particleAmount = this._fbo.amount;
-        const textureSize = this._fbo.textureSize;
-        const lineAmount = this._lineAmount;
-
-        const positions = new Float32Array(lineAmount * 2 * 3);
-        const oppositeUv = new Float32Array(lineAmount * 2 * 2);
-
-        let i4, i6, indexA, indexB;
-        for(let i = 0; i < lineAmount; ++i ) {
-            i4 = i * 4;
-            i6 = i * 6;
-            indexA = i % particleAmount;
-            positions[i6] = oppositeUv[i4 + 2] = (indexA % textureSize) / textureSize;
-            positions[i6 + 1] = oppositeUv[i4 + 3] = ~~(indexA / textureSize) / textureSize;
-            positions[i6 + 2] = -1;
-
-            indexB = ~~(math.hash(i * 100.0) * particleAmount);
-            if(indexB === indexA) indexB = (indexB + 1) % particleAmount;
-            positions[i6 + 3] = oppositeUv[i4] = (indexB % textureSize) / textureSize;
-            positions[i6 + 4] = oppositeUv[i4 + 1] = ~~(indexB / textureSize) / textureSize;
-            positions[i6 + 5] = 1;
-        }
-
-        const geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('oppositeUv', new THREE.BufferAttribute(oppositeUv, 2));
-        this._material = new THREE.ShaderMaterial({
-            uniforms: THREE.UniformsUtils.merge([
-                THREE.UniformsLib.fog,
-                THREE.UniformsLib.lights, {
-                texturePosition: { value: null },
-                lightNodesRatio: { value: 1 },
-                lightRatio: { value: 1 }
-            }]),
+    constructor(lineAmount: number, textureSize: number) {
+        this.uniforms = createUniforms();
+        this.material = new THREE.ShaderMaterial({
+            uniforms: this.uniforms,
             vertexShader: shaderParse(linesVert),
             fragmentShader: shaderParse(linesFrag),
             linewidth: 1,
@@ -63,38 +30,61 @@ export class ConstraintLines {
             lights: true,
             fog: true
         });
-
-        this._depthMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                texturePosition: { value: null },
-            },
+        this.depthMaterial = new THREE.ShaderMaterial({
+            uniforms: { texturePosition: this.uniforms.texturePosition },
             vertexShader: shaderParse(lineDepthVert),
             fragmentShader: shaderParse(lineDepthFrag),
             depthTest: true,
             depthWrite: true
         });
-
-        this.mesh = new THREE.LineSegments(geometry, this._material);
+        this.mesh = new THREE.LineSegments(createGeometry(lineAmount, textureSize), this.material);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         this.mesh.frustumCulled = false;
-        this.mesh.customDepthMaterial = this._depthMaterial;
+        this.mesh.customDepthMaterial = this.depthMaterial;
     }
 
     dispose(): void {
         this.mesh.geometry.dispose();
-        this._material.dispose();
-        this._depthMaterial.dispose();
+        this.material.dispose();
+        this.depthMaterial.dispose();
     }
 
-    update(
-        positionTexture: THREE.Texture,
-        lightNodesRatio: number,
-        lightRatio: number
-    ): void {
-        this._material.uniforms.texturePosition!.value = positionTexture;
-        this._depthMaterial.uniforms.texturePosition!.value = positionTexture;
-        this._material.uniforms.lightNodesRatio!.value = lightNodesRatio;
-        this._material.uniforms.lightRatio!.value = lightRatio;
+    update(positionTexture: THREE.Texture, lightNodesRatio: number, lightRatio: number): void {
+        this.uniforms.texturePosition.value = positionTexture;
+        this.uniforms.lightNodesRatio.value = lightNodesRatio;
+        this.uniforms.lightRatio.value = lightRatio;
     }
+}
+
+function createGeometry(lineAmount: number, textureSize: number): THREE.BufferGeometry {
+    const particleAmount = textureSize ** 2;
+    const positions = new Float32Array(lineAmount * 2 * 3);
+
+    for (let i = 0; i < lineAmount; ++i) {
+        const i6 = i * 6;
+        const indexA = i % particleAmount;
+        positions[i6] = (indexA % textureSize) / textureSize;
+        positions[i6 + 1] = Math.floor(indexA / textureSize) / textureSize;
+        positions[i6 + 2] = -1;
+
+        let indexB = Math.floor(math.hash(i * 100.0) * particleAmount);
+        if (indexB === indexA) indexB = (indexB + 1) % particleAmount;
+        positions[i6 + 3] = (indexB % textureSize) / textureSize;
+        positions[i6 + 4] = Math.floor(indexB / textureSize) / textureSize;
+        positions[i6 + 5] = 1;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    return geometry;
+}
+
+function createUniforms(): LineUniforms {
+    return {
+        ...THREE.UniformsUtils.merge([THREE.UniformsLib.fog, THREE.UniformsLib.lights]),
+        texturePosition: { value: null },
+        lightNodesRatio: { value: 1 },
+        lightRatio: { value: 1 }
+    };
 }
