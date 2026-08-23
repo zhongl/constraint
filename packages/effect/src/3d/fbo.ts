@@ -11,8 +11,8 @@ export class Fbo {
   readonly textureSize: number;
   readonly amount: number;
 
-  private velocityBuffers: PingPongBuffers;
-  private positionBuffers: PingPongBuffers;
+  private readonly velocityBuffers: PingPongBuffers;
+  private readonly positionBuffers: PingPongBuffers;
 
   private readonly velocity: Velocity;
   private readonly position: Position;
@@ -21,20 +21,14 @@ export class Fbo {
   constructor(textureSize: number, renderer: ConstraintRenderer) {
     this.textureSize = textureSize;
     this.amount = textureSize * textureSize;
-    this.velocityBuffers = PingPongBuffers.create(textureSize);
-    this.positionBuffers = PingPongBuffers.create(textureSize);
+    this.velocityBuffers = new PingPongBuffers(textureSize);
+    this.positionBuffers = new PingPongBuffers(textureSize);
     this.geometry = new THREE.PlaneGeometry(2, 2);
     const pass = new Pass(this.geometry, renderer);
     const copy = new Copy(pass);
 
-    this.velocityBuffers = PingPongBuffers.write(
-      this.velocityBuffers,
-      copy.render(squareTexture(textureSize, velocity)),
-    );
-    this.positionBuffers = PingPongBuffers.write(
-      this.positionBuffers,
-      copy.render(squareTexture(textureSize, position)),
-    );
+    this.velocityBuffers.write(copy.render(squareTexture(textureSize, velocity)));
+    this.positionBuffers.write(copy.render(squareTexture(textureSize, position)));
 
     copy.dispose();
 
@@ -45,10 +39,9 @@ export class Fbo {
   update(dt: number, simulationSpeed: number, constraintRatio: number, mouse3d: THREE.Vector3 | null): THREE.Texture {
     const delta = (Math.min(dt, 50) / (1000 / 60)) * simulationSpeed;
 
-    const texturePosition = PingPongBuffers.read(this.positionBuffers);
-    let textureVelocity = PingPongBuffers.read(this.velocityBuffers);
-    this.velocityBuffers = PingPongBuffers.write(
-      this.velocityBuffers,
+    const texturePosition = this.positionBuffers.texture;
+    let textureVelocity = this.velocityBuffers.texture;
+    this.velocityBuffers.write(
       this.velocity.render({
         delta,
         constraintRatio,
@@ -58,22 +51,19 @@ export class Fbo {
       }),
     );
 
-    textureVelocity = PingPongBuffers.read(this.velocityBuffers);
+    textureVelocity = this.velocityBuffers.texture;
 
-    this.positionBuffers = PingPongBuffers.write(
-      this.positionBuffers,
-      this.position.render({ delta, textureVelocity, texturePosition }),
-    );
+    this.positionBuffers.write(this.position.render({ delta, textureVelocity, texturePosition }));
 
-    return PingPongBuffers.read(this.positionBuffers);
+    return this.positionBuffers.texture;
   }
 
   dispose(): void {
     this.geometry.dispose();
     this.velocity.dispose();
     this.position.dispose();
-    PingPongBuffers.dispose(this.velocityBuffers);
-    PingPongBuffers.dispose(this.positionBuffers);
+    this.velocityBuffers.dispose();
+    this.positionBuffers.dispose();
   }
 }
 
