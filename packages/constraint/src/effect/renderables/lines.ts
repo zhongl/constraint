@@ -5,6 +5,7 @@ import linesFrag from './lines.frag';
 import lineDepthVert from './lineDepth.vert';
 import lineDepthFrag from './lineDepth.frag';
 import { hash } from './hash';
+import { NodeLayout } from '../node-layout';
 
 type LineUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;
@@ -19,7 +20,7 @@ export class Lines {
     private readonly depthMaterial: THREE.ShaderMaterial;
     private readonly uniforms: LineUniforms;
 
-    constructor(lineAmount: number, textureSize: number) {
+    constructor(lineAmount: number, layout: NodeLayout) {
         this.uniforms = createUniforms();
         this.material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
@@ -37,7 +38,7 @@ export class Lines {
             depthTest: true,
             depthWrite: true
         });
-        this.mesh = new THREE.LineSegments(createGeometry(lineAmount, textureSize), this.material);
+        this.mesh = new THREE.LineSegments(createGeometry(lineAmount, layout), this.material);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         this.mesh.frustumCulled = false;
@@ -57,21 +58,20 @@ export class Lines {
     }
 }
 
-function createGeometry(lineAmount: number, textureSize: number): THREE.BufferGeometry {
-    const particleAmount = textureSize ** 2;
+function createGeometry(lineAmount: number, layout: NodeLayout): THREE.BufferGeometry {
     const positions = new Float32Array(lineAmount * 2 * 3);
 
     for (let i = 0; i < lineAmount; ++i) {
         const i6 = i * 6;
-        const indexA = i % particleAmount;
-        positions[i6] = (indexA % textureSize) / textureSize;
-        positions[i6 + 1] = Math.floor(indexA / textureSize) / textureSize;
+        const indexA = i % layout.amount;
+        positions[i6] = layout.u(indexA);
+        positions[i6 + 1] = layout.v(indexA);
         positions[i6 + 2] = -1;
 
-        let indexB = Math.floor(hash(i * 100.0) * particleAmount);
-        if (indexB === indexA) indexB = (indexB + 1) % particleAmount;
-        positions[i6 + 3] = (indexB % textureSize) / textureSize;
-        positions[i6 + 4] = Math.floor(indexB / textureSize) / textureSize;
+        let indexB = Math.floor(hash(i * 100.0) * layout.amount);
+        if (indexB === indexA) indexB = (indexB + 1) % layout.amount;
+        positions[i6 + 3] = layout.u(indexB);
+        positions[i6 + 4] = layout.v(indexB);
         positions[i6 + 5] = 1;
     }
 

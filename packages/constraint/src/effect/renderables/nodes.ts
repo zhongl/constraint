@@ -3,6 +3,7 @@ import shaderParse from '../../three/shader-source';
 import nodeVert from './node.vert';
 import nodeFrag from './node.frag';
 import { hash } from './hash';
+import { NodeLayout } from '../node-layout';
 
 type NodeUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;
@@ -15,7 +16,7 @@ export class Nodes {
     private readonly material: THREE.ShaderMaterial;
     private readonly uniforms: NodeUniforms;
 
-    constructor(textureSize: number) {
+    constructor(layout: NodeLayout) {
         this.uniforms = createUniforms();
         this.material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
@@ -26,7 +27,7 @@ export class Nodes {
             depthWrite: false,
             fog: true
         });
-        this.mesh = new THREE.Points(createGeometry(textureSize), this.material);
+        this.mesh = new THREE.Points(createGeometry(layout), this.material);
     }
 
     dispose(): void {
@@ -45,14 +46,13 @@ export class Nodes {
     }
 }
 
-function createGeometry(textureSize: number): THREE.BufferGeometry {
-    const amount = textureSize ** 2;
-    const positions = new Float32Array(amount * 3);
+function createGeometry(layout: NodeLayout): THREE.BufferGeometry {
+    const positions = new Float32Array(layout.amount * 3);
 
-    for (let i = 0; i < amount; ++i) {
+    for (let i = 0; i < layout.amount; ++i) {
         const i3 = i * 3;
-        positions[i3] = (i % textureSize) / textureSize;
-        positions[i3 + 1] = Math.floor(i / textureSize) / textureSize;
+        positions[i3] = layout.u(i);
+        positions[i3 + 1] = layout.v(i);
         positions[i3 + 2] = Math.pow(hash(20 + i * 31.512), 5);
     }
 
