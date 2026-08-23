@@ -4,7 +4,7 @@ import { Environment } from './scene/environment';
 import { Fbo } from './simulation/fbo';
 import { Lines } from './renderables/lines';
 import { Nodes } from './renderables/nodes';
-import type { ConstraintTuning } from '../settings';
+import type { ConstraintTuning } from '../tuning';
 
 export interface ConstraintOptions {
     textureSize: number;
