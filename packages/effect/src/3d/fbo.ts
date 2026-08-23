@@ -1,41 +1,11 @@
 import * as THREE from "three";
+import type { ConstraintRenderer } from "../ConstraintRenderer";
 import shaderParse from "../helpers/shaderParse";
 import fboVert from "../glsl/fbo.vert";
 import fboThroughFrag from "../glsl/fboThrough.frag";
 import velocityFrag from "../glsl/velocity.frag";
 import positionFrag from "../glsl/position.frag";
 import { PingPongBuffers } from "./pingpong";
-
-declare const fboRenderer: unique symbol;
-
-export type FboRenderer = THREE.WebGLRenderer & {
-  readonly [fboRenderer]: true;
-};
-
-export class UnsupportedWebGLCapabilityError extends Error {
-  constructor(capability: string) {
-    super(`FBO requires ${capability}`);
-    this.name = "UnsupportedWebGLCapabilityError";
-  }
-}
-
-function assertFboCapability(capability: string, supported: boolean): void {
-  if (!supported) {
-    throw new UnsupportedWebGLCapabilityError(capability);
-  }
-}
-
-export function assertFboRenderer(renderer: THREE.WebGLRenderer): asserts renderer is FboRenderer {
-  const gl = renderer.getContext();
-  assertFboCapability("MAX_VERTEX_TEXTURE_IMAGE_UNITS", !!gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS));
-
-  const extensions = renderer.capabilities.isWebGL2
-    ? ["EXT_color_buffer_float"]
-    : ["OES_texture_float", "WEBGL_color_buffer_float"];
-  for (const extension of extensions) {
-    assertFboCapability(extension, !!gl.getExtension(extension));
-  }
-}
 
 export class Fbo {
   readonly textureSize: number;
@@ -53,7 +23,7 @@ export class Fbo {
     this.amount = textureSize * textureSize;
   }
 
-  init(renderer: FboRenderer): void {
+  init(renderer: ConstraintRenderer): void {
     this.velocityBuffers = PingPongBuffers.create(this.textureSize);
     this.positionBuffers = PingPongBuffers.create(this.textureSize);
     this.geometry = new THREE.PlaneGeometry(2, 2);

@@ -3,10 +3,7 @@ import './styles/index.css';
 import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import {
-    ConstraintEffect,
-    UnsupportedWebGLCapabilityError
-} from '@constraint/effect';
+import { ConstraintEffect } from '@constraint/effect';
 
 class App {
     private readonly _raf = window.requestAnimationFrame.bind(window);
@@ -160,11 +157,8 @@ class App {
     }
 }
 
-function showInitializationError(error: unknown): void {
-    const message = error instanceof UnsupportedWebGLCapabilityError
-        ? '你的设备或浏览器不支持运行所需的 WebGL 能力。'
-        : '初始化时发生错误。';
-    document.body.innerHTML = `<main class="compatibility-message"><h1>无法运行此实验</h1><p>${message}</p><p>请尝试使用最新版 Chrome、Safari 或 Firefox，并开启硬件加速。</p></main>`;
+function showInitializationError(error: Error): void {
+    document.body.innerHTML = `<main class="compatibility-message"><h1>无法运行此实验</h1><p>${error.message}</p><p>请尝试使用最新版 Chrome、Safari 或 Firefox，并开启硬件加速。</p></main>`;
 }
 
 function main(): void {
@@ -172,7 +166,7 @@ function main(): void {
         new App().init();
     } catch (error) {
         console.error(error);
-        showInitializationError(error);
+        showInitializationError(error as Error);
     }
 }
 
