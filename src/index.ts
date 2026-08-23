@@ -6,76 +6,119 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Constraint } from '@constraint/effect';
 
 class App {
-    private readonly _raf = window.requestAnimationFrame.bind(window);
-
-    private _gui!: GUI;
-    private _width = 0;
-    private _height = 0;
-
-    private _control!: OrbitControls;
-    private _camera!: THREE.PerspectiveCamera;
-    private _scene!: THREE.Scene;
-    private _renderer!: THREE.WebGLRenderer;
-    private _constraint!: Constraint;
-
-    private _time = 0;
-    private readonly _mouse = new THREE.Vector2();
-    private readonly _ray = new THREE.Ray();
-
-    private _initAnimation = 0;
-    private _lastMouseMove = 0;
-    private _isOverControls = false;
-
     followTimeout = 500;
 
-    init(): void {
-        this._renderer = new THREE.WebGLRenderer({
-            antialias: true
-        });
-        this._renderer.debug.checkShaderErrors = true;
-        this._renderer.shadowMap.type = THREE.PCFShadowMap;
-        this._renderer.shadowMap.enabled = true;
-        document.body.appendChild(this._renderer.domElement);
+    private readonly renderer: THREE.WebGLRenderer;
+    private readonly scene = new THREE.Scene();
+    private readonly camera = new THREE.PerspectiveCamera(45, 1, 1, 3000);
+    private readonly control: OrbitControls;
+    private readonly constraint: Constraint;
+    private readonly gui: GUI;
+    private readonly mouse = new THREE.Vector2();
+    private readonly ray = new THREE.Ray();
 
-        this._scene = new THREE.Scene();
+    private width = 0;
+    private height = 0;
+    private time = 0;
+    private animationFrame = 0;
+    private initAnimation = 0;
+    private lastMouseMove = 0;
+    private isOverControls = false;
 
-        this._camera = new THREE.PerspectiveCamera(45, 1, 1, 3000);
-        this._camera.position.set(0, 500, 1200).normalize().multiplyScalar(1500);
+    private readonly onResize = (): void => {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
 
-        this._control = new OrbitControls(this._camera, this._renderer.domElement);
-        this._control.minDistance = 600;
-        this._control.maxDistance = 1500;
-        this._control.minPolarAngle = 0.3;
-        this._control.maxPolarAngle = Math.PI / 2;
-        this._control.target.y = -30;
-        this._control.enablePan = false;
-        this._control.update();
+        this.camera.aspect = this.width / this.height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.width, this.height);
+    };
 
-        this._constraint = new Constraint(this._renderer, this._scene, {
+    private readonly onMouseMove = (evt: MouseEvent): void => {
+        this.onMove(evt);
+    };
+
+    private readonly onTouchMove = (evt: TouchEvent): void => {
+        this.onMove(evt.changedTouches[0]!);
+    };
+
+    private readonly onKeyUp = (evt: KeyboardEvent): void => {
+        if (evt.key === ' ') {
+            this.constraint.appearance.lightMode = !this.constraint.appearance.lightMode;
+        }
+    };
+
+    constructor() {
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.debug.checkShaderErrors = true;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        this.renderer.shadowMap.enabled = true;
+        document.body.appendChild(this.renderer.domElement);
+
+        this.camera.position.set(0, 500, 1200).normalize().multiplyScalar(1500);
+
+        this.control = new OrbitControls(this.camera, this.renderer.domElement);
+        this.control.minDistance = 600;
+        this.control.maxDistance = 1500;
+        this.control.minPolarAngle = 0.3;
+        this.control.maxPolarAngle = Math.PI / 2;
+        this.control.target.y = -30;
+        this.control.enablePan = false;
+        this.control.update();
+
+        this.constraint = new Constraint(this.renderer, this.scene, {
             textureSize: 32,
             lineAmount: 1024 * 16
         });
 
-        this._gui = new GUI();
-        const linesGui = this._gui.addFolder('Motion');
-        linesGui.add(this._constraint.motion, 'constraintRatio', 0, 0.15).name('constraint ratio');
-        linesGui.add(this._constraint.motion, 'simulationSpeed', 0, 3).name('simulation speed');
+        this.gui = this.createGui();
+    }
+
+    start(): void {
+        window.addEventListener('resize', this.onResize);
+        window.addEventListener('mousemove', this.onMouseMove);
+        window.addEventListener('touchmove', this.onTouchMove);
+        document.addEventListener('keyup', this.onKeyUp);
+
+        this.time = Date.now();
+        this.onResize();
+        this.loop();
+    }
+
+    dispose(): void {
+        window.cancelAnimationFrame(this.animationFrame);
+        window.removeEventListener('resize', this.onResize);
+        window.removeEventListener('mousemove', this.onMouseMove);
+        window.removeEventListener('touchmove', this.onTouchMove);
+        document.removeEventListener('keyup', this.onKeyUp);
+        this.gui.destroy();
+        this.constraint.dispose();
+        this.control.dispose();
+        this.renderer.dispose();
+        this.renderer.domElement.remove();
+    }
+
+    private createGui(): GUI {
+        const gui = new GUI();
+        const linesGui = gui.addFolder('Motion');
+        linesGui.add(this.constraint.motion, 'constraintRatio', 0, 0.15).name('constraint ratio');
+        linesGui.add(this.constraint.motion, 'simulationSpeed', 0, 3).name('simulation speed');
         linesGui.add(this, 'followTimeout', 100, 1000, 10).name('follow timeout (ms)');
 
-        const envGui = this._gui.addFolder('Rendering');
-        envGui.add(this._constraint.appearance, 'showLightNodes').name('light nodes');
-        envGui.add(this._constraint.appearance, 'lightMode').name('light mode').listen();
-        envGui.addColor(this._constraint.appearance, 'backgroundDark').name('background dark');
-        envGui.addColor(this._constraint.appearance, 'backgroundLight').name('background light');
-        envGui.addColor(this._constraint.appearance, 'groundDark').name('ground dark');
-        envGui.addColor(this._constraint.appearance, 'groundLight').name('ground light');
-        envGui.add(this._constraint.appearance, 'fogDensity', 0, 0.01).name('fog density');
+        const envGui = gui.addFolder('Rendering');
+        envGui.add(this.constraint.appearance, 'showLightNodes').name('light nodes');
+        envGui.add(this.constraint.appearance, 'lightMode').name('light mode').listen();
+        envGui.addColor(this.constraint.appearance, 'backgroundDark').name('background dark');
+        envGui.addColor(this.constraint.appearance, 'backgroundLight').name('background light');
+        envGui.addColor(this.constraint.appearance, 'groundDark').name('ground dark');
+        envGui.addColor(this.constraint.appearance, 'groundLight').name('ground light');
+        envGui.add(this.constraint.appearance, 'fogDensity', 0, 0.01).name('fog density');
 
         const preventDefault = (evt: KeyboardEvent) => {
             evt.preventDefault();
             (evt.currentTarget as HTMLElement).blur();
         };
-        Array.prototype.forEach.call(this._gui.domElement.querySelectorAll('input[type="checkbox"],select'), function(elem: HTMLInputElement | HTMLSelectElement) {
+        Array.prototype.forEach.call(gui.domElement.querySelectorAll('input[type="checkbox"],select'), function(elem: HTMLInputElement | HTMLSelectElement) {
             elem.onkeyup = elem.onkeydown = preventDefault;
             elem.style.color = '#000';
         });
@@ -85,73 +128,44 @@ class App {
             envGui.open();
         }
 
-        window.addEventListener('resize', this._onResize.bind(this));
-        window.addEventListener('mousemove', this._onMove.bind(this));
-        window.addEventListener('touchmove', this._bindTouch(this._onMove.bind(this)));
-        document.addEventListener('keyup', this._onKeyUp.bind(this));
-
-        this._time = Date.now();
-        this._onResize();
-        this._loop();
+        return gui;
     }
 
+    private onMove(evt: MouseEvent | Touch): void {
+        this.lastMouseMove = performance.now();
+        this.isOverControls = evt.target instanceof Element && evt.target.closest('.lil-gui') !== null;
 
-    private _onKeyUp(evt: KeyboardEvent): void {
-        if (evt.keyCode === 32) {
-            this._constraint.appearance.lightMode = !this._constraint.appearance.lightMode;
-        }
+        this.mouse.x = (evt.pageX / this.width) * 2 - 1;
+        this.mouse.y = -(evt.pageY / this.height) * 2 + 1;
     }
 
-    private _bindTouch(func: (evt: MouseEvent | Touch) => void): (evt: TouchEvent) => void {
-        return (evt: TouchEvent) => {
-            func(evt.changedTouches[0]!);
-        };
-    }
-
-    private _onMove(evt: MouseEvent | Touch): void {
-        this._lastMouseMove = performance.now();
-        this._isOverControls = evt.target instanceof Element && evt.target.closest('.lil-gui') !== null;
-
-        this._mouse.x = (evt.pageX / this._width) * 2 - 1;
-        this._mouse.y = -(evt.pageY / this._height) * 2 + 1;
-    }
-
-    private _onResize(): void {
-        this._width = window.innerWidth;
-        this._height = window.innerHeight;
-
-        this._camera.aspect = this._width / this._height;
-        this._camera.updateProjectionMatrix();
-        this._renderer.setSize(this._width, this._height);
-    }
-
-    private _loop(): void {
+    private readonly loop = (): void => {
         const newTime = Date.now();
-        this._raf(this._loop.bind(this));
-        this._render(newTime - this._time);
-        this._time = newTime;
-    }
+        this.animationFrame = window.requestAnimationFrame(this.loop);
+        this.render(newTime - this.time);
+        this.time = newTime;
+    };
 
-    private _render(dt: number): void {
-        const isMoving = performance.now() - this._lastMouseMove < this.followTimeout;
-        const pointer = isMoving && !this._isOverControls ? this._ray.origin : null;
+    private render(dt: number): void {
+        const isMoving = performance.now() - this.lastMouseMove < this.followTimeout;
+        const pointer = isMoving && !this.isOverControls ? this.ray.origin : null;
 
-        this._initAnimation = Math.min(this._initAnimation + dt * 0.0002, 1);
-        const zoomAnimation = Math.pow(this._initAnimation, 2);
+        this.initAnimation = Math.min(this.initAnimation + dt * 0.0002, 1);
+        const zoomAnimation = Math.pow(this.initAnimation, 2);
 
-        this._control.maxDistance = zoomAnimation === 1 ? 1500 : 1500 + (900 - 1500) * zoomAnimation;
-        this._control.update();
+        this.control.maxDistance = zoomAnimation === 1 ? 1500 : 1500 + (900 - 1500) * zoomAnimation;
+        this.control.update();
 
-        this._camera.updateMatrixWorld();
-        this._ray.origin.setFromMatrixPosition(this._camera.matrixWorld);
-        this._ray.direction.set(this._mouse.x, this._mouse.y, 0.5).unproject(this._camera).sub(this._ray.origin).normalize();
-        const distance = this._ray.origin.length() / Math.cos(Math.PI - this._ray.direction.angleTo(this._ray.origin));
-        this._ray.origin.add(this._ray.direction.multiplyScalar(distance * 0.9));
-        this._constraint.update({ dt, pointer });
+        this.camera.updateMatrixWorld();
+        this.ray.origin.setFromMatrixPosition(this.camera.matrixWorld);
+        this.ray.direction.set(this.mouse.x, this.mouse.y, 0.5).unproject(this.camera).sub(this.ray.origin).normalize();
+        const distance = this.ray.origin.length() / Math.cos(Math.PI - this.ray.direction.angleTo(this.ray.origin));
+        this.ray.origin.add(this.ray.direction.multiplyScalar(distance * 0.9));
+        this.constraint.update({ dt, pointer });
 
-        this._renderer.render(this._scene, this._camera);
+        this.renderer.render(this.scene, this.camera);
 
-        document.documentElement.classList.toggle('is-light', this._constraint.appearance.lightMode);
+        document.documentElement.classList.toggle('is-light', this.constraint.appearance.lightMode);
     }
 }
 
@@ -161,7 +175,7 @@ function showInitializationError(error: Error): void {
 
 function main(): void {
     try {
-        new App().init();
+        new App().start();
     } catch (error) {
         console.error(error);
         showInitializationError(error as Error);
