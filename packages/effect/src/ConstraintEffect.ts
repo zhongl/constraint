@@ -50,7 +50,7 @@ export class ConstraintEffect {
         this._fbo = new Fbo(options.textureSize, this._renderer);
         this._lights = new ConstraintLights();
         this._lines = new ConstraintLines(options.lineAmount, this._fbo);
-        this._nodes = new ConstraintNodes(this._fbo);
+        this._nodes = new ConstraintNodes(options.textureSize);
         this._ground = new ConstraintGround();
         this._skybox = new THREE.Mesh(new THREE.IcosahedronGeometry(128, 2));
     }
@@ -104,7 +104,6 @@ export class ConstraintEffect {
         this._scene.add(this._lights.mesh);
         this._lines.init();
         this._scene.add(this._lines.mesh);
-        this._nodes.init();
         this._scene.add(this._nodes.mesh);
         this._ground.init();
         this._scene.add(this._ground.mesh);
