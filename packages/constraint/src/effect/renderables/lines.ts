@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import shaderParse from '../../helpers/shaderParse';
+import shaderParse from '../../three/shader-source';
 import linesVert from './lines.vert';
 import linesFrag from './lines.frag';
 import lineDepthVert from './lineDepth.vert';
