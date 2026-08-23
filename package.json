@@ -6,7 +6,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "@constraint/effect": "workspace:*",
+    "@tech-kn/constraint": "workspace:*",
     "lil-gui": "^0.21.0",
     "three": "0.185.1"
   },
@@ -19,12 +19,12 @@
     "vite": "^8.2.1"
   },
   "scripts": {
-    "predev": "pnpm --filter @constraint/effect build",
+    "predev": "pnpm --filter @tech-kn/constraint build",
     "dev": "vite",
-    "dev:effect": "pnpm --filter @constraint/effect watch",
+    "dev:effect": "pnpm --filter @tech-kn/constraint watch",
     "lint": "eslint .",
-    "typecheck": "pnpm --filter @constraint/effect typecheck && tsc --noEmit",
-    "build": "pnpm --filter @constraint/effect build && vite build",
+    "typecheck": "pnpm --filter @tech-kn/constraint typecheck && tsc --noEmit",
+    "build": "pnpm --filter @tech-kn/constraint build && vite build",
     "preview": "pnpm build && vite preview"
   },
   "author": "",

@@ -1,5 +1,5 @@
 import GUI from 'lil-gui';
-import type { ConstraintTuning, PointerOptions } from '@constraint/effect';
+import type { ConstraintTuning, PointerOptions } from '@tech-kn/constraint';
 
 interface DebugPanelOptions {
     tuning: ConstraintTuning;

@@ -1,6 +1,6 @@
 import './styles/normalize.css';
 import './styles/index.css';
-import { ConstraintBackground, createConstraintTuning, type PointerOptions } from '@constraint/effect';
+import { ConstraintBackground, createConstraintTuning, type PointerOptions } from '@tech-kn/constraint';
 import { mountDebugPanel } from './debug-panel';
 
 class App {
