@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Appearance } from '../settings';
+import type { Appearance } from '../../settings';
 import { Ground } from './ground';
 import { Lights } from './lights';
 
