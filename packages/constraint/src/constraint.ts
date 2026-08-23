@@ -4,11 +4,12 @@ import { Environment } from './3d/environment';
 import { Fbo } from './3d/fbo';
 import { Lines } from './3d/lines';
 import { Nodes } from './3d/nodes';
-import type { Appearance, Motion } from './settings';
+import type { ConstraintTuning } from './settings';
 
 export interface ConstraintOptions {
     textureSize: number;
     lineAmount: number;
+    tuning: ConstraintTuning;
 }
 
 export interface Frame {
@@ -17,22 +18,8 @@ export interface Frame {
 }
 
 export class Constraint {
-    readonly motion: Motion = {
-        constraintRatio: 0.07,
-        simulationSpeed: 1
-    };
-
-    readonly appearance: Appearance = {
-        showLightNodes: false,
-        lightMode: false,
-        backgroundDark: '#222222',
-        backgroundLight: '#eeeeee',
-        groundDark: '#111111',
-        groundLight: '#cccccc',
-        fogDensity: 0.001
-    };
-
     private readonly scene: THREE.Scene;
+    private readonly tuning: ConstraintTuning;
     private readonly environment: Environment;
     private readonly fbo: Fbo;
     private readonly lines: Lines;
@@ -45,10 +32,11 @@ export class Constraint {
     ) {
         const rendererCapability = requireRenderer(renderer);
         this.scene = scene;
+        this.tuning = options.tuning;
         this.fbo = new Fbo(options.textureSize, rendererCapability);
         this.lines = new Lines(options.lineAmount, options.textureSize);
         this.nodes = new Nodes(options.textureSize);
-        this.environment = new Environment(renderer, scene, this.appearance);
+        this.environment = new Environment(renderer, scene, this.tuning.appearance);
         this.scene.add(this.lines.mesh, this.nodes.mesh);
     }
 
@@ -61,11 +49,11 @@ export class Constraint {
     }
 
     update(frame: Frame): void {
-        const environment = this.environment.update(this.appearance);
+        const environment = this.environment.update(this.tuning.appearance);
         const positionTexture = this.fbo.update(
             frame.dt,
-            this.motion.simulationSpeed,
-            this.motion.constraintRatio,
+            this.tuning.motion.simulationSpeed,
+            this.tuning.motion.constraintRatio,
             frame.pointer
         );
 

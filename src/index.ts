@@ -3,7 +3,7 @@ import './styles/index.css';
 import GUI from 'lil-gui';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Constraint } from '@constraint/effect';
+import { Constraint, createConstraintTuning } from '@constraint/effect';
 
 class App {
     followTimeout = 500;
@@ -12,6 +12,7 @@ class App {
     private readonly scene = new THREE.Scene();
     private readonly camera = new THREE.PerspectiveCamera(45, 1, 1, 3000);
     private readonly control: OrbitControls;
+    private readonly tuning = createConstraintTuning();
     private readonly constraint: Constraint;
     private readonly gui: GUI;
     private readonly mouse = new THREE.Vector2();
@@ -44,7 +45,7 @@ class App {
 
     private readonly onKeyUp = (evt: KeyboardEvent): void => {
         if (evt.key === ' ') {
-            this.constraint.appearance.lightMode = !this.constraint.appearance.lightMode;
+            this.tuning.appearance.lightMode = !this.tuning.appearance.lightMode;
         }
     };
 
@@ -68,7 +69,8 @@ class App {
 
         this.constraint = new Constraint(this.renderer, this.scene, {
             textureSize: 32,
-            lineAmount: 1024 * 16
+            lineAmount: 1024 * 16,
+            tuning: this.tuning
         });
 
         this.gui = this.createGui();
@@ -101,18 +103,18 @@ class App {
     private createGui(): GUI {
         const gui = new GUI();
         const linesGui = gui.addFolder('Motion');
-        linesGui.add(this.constraint.motion, 'constraintRatio', 0, 0.15).name('constraint ratio');
-        linesGui.add(this.constraint.motion, 'simulationSpeed', 0, 3).name('simulation speed');
+        linesGui.add(this.tuning.motion, 'constraintRatio', 0, 0.15).name('constraint ratio');
+        linesGui.add(this.tuning.motion, 'simulationSpeed', 0, 3).name('simulation speed');
         linesGui.add(this, 'followTimeout', 100, 1000, 10).name('follow timeout (ms)');
 
         const envGui = gui.addFolder('Rendering');
-        envGui.add(this.constraint.appearance, 'showLightNodes').name('light nodes');
-        envGui.add(this.constraint.appearance, 'lightMode').name('light mode').listen();
-        envGui.addColor(this.constraint.appearance, 'backgroundDark').name('background dark');
-        envGui.addColor(this.constraint.appearance, 'backgroundLight').name('background light');
-        envGui.addColor(this.constraint.appearance, 'groundDark').name('ground dark');
-        envGui.addColor(this.constraint.appearance, 'groundLight').name('ground light');
-        envGui.add(this.constraint.appearance, 'fogDensity', 0, 0.01).name('fog density');
+        envGui.add(this.tuning.appearance, 'showLightNodes').name('light nodes');
+        envGui.add(this.tuning.appearance, 'lightMode').name('light mode').listen();
+        envGui.addColor(this.tuning.appearance, 'backgroundDark').name('background dark');
+        envGui.addColor(this.tuning.appearance, 'backgroundLight').name('background light');
+        envGui.addColor(this.tuning.appearance, 'groundDark').name('ground dark');
+        envGui.addColor(this.tuning.appearance, 'groundLight').name('ground light');
+        envGui.add(this.tuning.appearance, 'fogDensity', 0, 0.01).name('fog density');
 
         const preventDefault = (evt: KeyboardEvent) => {
             evt.preventDefault();
@@ -165,7 +167,7 @@ class App {
 
         this.renderer.render(this.scene, this.camera);
 
-        document.documentElement.classList.toggle('is-light', this.constraint.appearance.lightMode);
+        document.documentElement.classList.toggle('is-light', this.tuning.appearance.lightMode);
     }
 }
 
