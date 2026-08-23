@@ -100,11 +100,9 @@ export class ConstraintEffect {
         this._scene.fog = this._fog;
 
 
-        this._lights.init();
         this._scene.add(this._lights.mesh);
         this._scene.add(this._lines.mesh);
         this._scene.add(this._nodes.mesh);
-        this._ground.init();
         this._scene.add(this._ground.mesh);
 
         this._skybox.material = ignoredMaterial;
@@ -148,7 +146,6 @@ export class ConstraintEffect {
             this._followPointer ? mouse3d : null
         );
 
-        this._lights.update();
         this._lines.update(positionTexture, this._lightNodesRatio, this._lightRatio);
         this._nodes.update(positionTexture, this._useLightNodes, this._lightRatio);
         this._ground.update(this._groundDarkValue, this._groundLightValue, this._lightRatio);
