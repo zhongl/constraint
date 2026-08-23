@@ -1,25 +1,43 @@
-## 縳 Constraint
+# Constraint
 
 ![](https://raw.githubusercontent.com/edankwan/Constraint/master/app/images/screenshot.jpg)
 
-[Live demo](http://www.edankwan.com/experiments/constraint/) | [Video](https://www.youtube.com/watch?v=LCDBNS7FkrA)
+This project is based on [Edan Kwan's Constraint](https://github.com/edankwan/Constraint) and continues to evolve from it. Many thanks to Edan Kwan for creating and releasing this work under the MIT License.
 
-## Development and deployment
-- install: `pnpm install`
-- dev: `pnpm dev`（启动前会自动构建 `@constraint/effect`）
-- effect watch: `pnpm dev:effect`（监听 effect 源码并持续构建 `dist`，需与 `pnpm dev` 并行运行）
-- build: `pnpm build`
-- preview production build: `pnpm preview`
+## Demo
 
-开发 effect 包时，请分别运行：
+See it in action at the [Constraint Demo](https://tech-kn.github.io/constraint/).
 
-```bash
-pnpm dev:effect
-pnpm dev
+## Usage
+
+The package is published to GitHub Packages.
+
+Configure the registry in your project's `.npmrc`:
+
+```ini
+@tech-kn:registry=https://npm.pkg.github.com
 ```
 
-Demo 始终消费 `@constraint/effect` 的构建产物；修改 effect 源码后，watch 任务会更新 `packages/constraint/dist`。
+Install the dependencies:
+
+```bash
+pnpm add @tech-kn/constraint
+```
+
+Create a sized container and initialize the background:
+
+```ts
+import { ConstraintBackground } from '@tech-kn/constraint';
+
+const host = document.querySelector<HTMLElement>('#constraint')!;
+const background = new ConstraintBackground(host, {
+  theme: 'dark'
+});
+
+// Release WebGL and other resources when the page is unmounted.
+background.dispose();
+```
 
 ## License
-This experiment is under MIT License.
 
+MIT. See [LICENSE.md](LICENSE.md).

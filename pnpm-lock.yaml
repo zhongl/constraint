@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@constraint/effect':
+      '@tech-kn/constraint':
         specifier: workspace:*
         version: link:packages/constraint
       lil-gui:
