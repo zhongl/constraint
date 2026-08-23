@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@tech-kn'
 
       - run: pnpm install --frozen-lockfile
       - name: Set package version from tag
