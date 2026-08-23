@@ -11,6 +11,11 @@ export interface ConstraintEffectOptions {
     lineAmount: number;
 }
 
+export interface ConstraintFrame {
+    dt: number;
+    pointer: Readonly<THREE.Vector3> | null;
+}
+
 export class ConstraintEffect {
     private readonly _renderer: ConstraintRenderer;
     private readonly _scene: THREE.Scene;
@@ -28,7 +33,6 @@ export class ConstraintEffect {
 
     private _constraintRatio = 0.07;
     private _simulationSpeed = 1;
-    private _followPointer = false;
     private _useLightNodes = false;
     private _isLight = false;
     private _lightRatio = 0;
@@ -66,9 +70,6 @@ export class ConstraintEffect {
     get simulationSpeed(): number { return this._simulationSpeed; }
     set simulationSpeed(value: number) { this._simulationSpeed = value; }
 
-    get followPointer(): boolean { return this._followPointer; }
-    set followPointer(value: boolean) { this._followPointer = value; }
-
     get useLightNodes(): boolean { return this._useLightNodes; }
     set useLightNodes(value: boolean) { this._useLightNodes = value; }
 
@@ -101,7 +102,7 @@ export class ConstraintEffect {
         this._renderer.setClearColor(this._previousClearColor, this._previousClearAlpha);
     }
 
-    update(dt: number, mouse3d: Readonly<THREE.Vector3>): void {
+    update(frame: ConstraintFrame): void {
         this._lightRatio += ((this._isLight ? 1 : 0) - this._lightRatio) * 0.2;
         this._lightNodesRatio += ((this._useLightNodes ? 1 : 0) - this._lightNodesRatio) * 0.1;
 
@@ -112,10 +113,10 @@ export class ConstraintEffect {
         this._renderer.setClearColor(this._fog.color.getHex());
 
         const positionTexture = this._fbo.update(
-            dt,
+            frame.dt,
             this._simulationSpeed,
             this._constraintRatio,
-            this._followPointer ? mouse3d : null
+            frame.pointer
         );
 
         this._lines.update(positionTexture, this._lightNodesRatio, this._lightRatio);
