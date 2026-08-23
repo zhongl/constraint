@@ -4,6 +4,7 @@ import { ConstraintEnvironment } from './3d/environment';
 import { Fbo } from './3d/fbo';
 import { ConstraintLines } from './3d/lines';
 import { ConstraintNodes } from './3d/nodes';
+import type { ConstraintAppearance, ConstraintMotion } from './settings';
 
 export interface ConstraintEffectOptions {
     textureSize: number;
@@ -16,14 +17,26 @@ export interface ConstraintFrame {
 }
 
 export class ConstraintEffect {
+    readonly motion: ConstraintMotion = {
+        constraintRatio: 0.07,
+        simulationSpeed: 1
+    };
+
+    readonly appearance: ConstraintAppearance = {
+        showLightNodes: false,
+        lightMode: false,
+        backgroundDark: '#222222',
+        backgroundLight: '#eeeeee',
+        groundDark: '#111111',
+        groundLight: '#cccccc',
+        fogDensity: 0.001
+    };
+
     private readonly scene: THREE.Scene;
     private readonly environment: ConstraintEnvironment;
     private readonly fbo: Fbo;
     private readonly lines: ConstraintLines;
     private readonly nodes: ConstraintNodes;
-
-    private constraintRatioValue = 0.07;
-    private simulationSpeedValue = 1;
 
     constructor(
         renderer: THREE.WebGLRenderer,
@@ -35,36 +48,9 @@ export class ConstraintEffect {
         this.fbo = new Fbo(options.textureSize, constraintRenderer);
         this.lines = new ConstraintLines(options.lineAmount, options.textureSize);
         this.nodes = new ConstraintNodes(options.textureSize);
-        this.environment = new ConstraintEnvironment(renderer, scene);
+        this.environment = new ConstraintEnvironment(renderer, scene, this.appearance);
         this.scene.add(this.lines.mesh, this.nodes.mesh);
     }
-
-    get constraintRatio(): number { return this.constraintRatioValue; }
-    set constraintRatio(value: number) { this.constraintRatioValue = value; }
-
-    get simulationSpeed(): number { return this.simulationSpeedValue; }
-    set simulationSpeed(value: number) { this.simulationSpeedValue = value; }
-
-    get useLightNodes(): boolean { return this.environment.useLightNodes; }
-    set useLightNodes(value: boolean) { this.environment.useLightNodes = value; }
-
-    get isLight(): boolean { return this.environment.isLight; }
-    set isLight(value: boolean) { this.environment.isLight = value; }
-
-    get backgroundDark(): string { return this.environment.backgroundDarkValue; }
-    set backgroundDark(value: string) { this.environment.backgroundDarkValue = value; }
-
-    get backgroundLight(): string { return this.environment.backgroundLightValue; }
-    set backgroundLight(value: string) { this.environment.backgroundLightValue = value; }
-
-    get groundDark(): string { return this.environment.groundDarkValue; }
-    set groundDark(value: string) { this.environment.groundDarkValue = value; }
-
-    get groundLight(): string { return this.environment.groundLightValue; }
-    set groundLight(value: string) { this.environment.groundLightValue = value; }
-
-    get fogDensity(): number { return this.environment.fogDensity; }
-    set fogDensity(value: number) { this.environment.fogDensity = value; }
 
     dispose(): void {
         this.scene.remove(this.lines.mesh, this.nodes.mesh);
@@ -75,11 +61,11 @@ export class ConstraintEffect {
     }
 
     update(frame: ConstraintFrame): void {
-        const environment = this.environment.update();
+        const environment = this.environment.update(this.appearance);
         const positionTexture = this.fbo.update(
             frame.dt,
-            this.simulationSpeedValue,
-            this.constraintRatioValue,
+            this.motion.simulationSpeed,
+            this.motion.constraintRatio,
             frame.pointer
         );
 
