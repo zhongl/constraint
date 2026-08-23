@@ -4,7 +4,7 @@ import linesVert from './lines.vert';
 import linesFrag from './lines.frag';
 import lineDepthVert from './lineDepth.vert';
 import lineDepthFrag from './lineDepth.frag';
-import * as math from '../../utils/math';
+import { hash } from './hash';
 
 type LineUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;
@@ -68,7 +68,7 @@ function createGeometry(lineAmount: number, textureSize: number): THREE.BufferGe
         positions[i6 + 1] = Math.floor(indexA / textureSize) / textureSize;
         positions[i6 + 2] = -1;
 
-        let indexB = Math.floor(math.hash(i * 100.0) * particleAmount);
+        let indexB = Math.floor(hash(i * 100.0) * particleAmount);
         if (indexB === indexA) indexB = (indexB + 1) % particleAmount;
         positions[i6 + 3] = (indexB % textureSize) / textureSize;
         positions[i6 + 4] = Math.floor(indexB / textureSize) / textureSize;

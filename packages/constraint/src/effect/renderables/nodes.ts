@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import shaderParse from '../../three/shader-source';
 import nodeVert from './node.vert';
 import nodeFrag from './node.frag';
-import * as math from '../../utils/math';
+import { hash } from './hash';
 
 type NodeUniforms = Record<string, THREE.IUniform> & {
     texturePosition: THREE.IUniform<THREE.Texture | null>;
@@ -53,7 +53,7 @@ function createGeometry(textureSize: number): THREE.BufferGeometry {
         const i3 = i * 3;
         positions[i3] = (i % textureSize) / textureSize;
         positions[i3 + 1] = Math.floor(i / textureSize) / textureSize;
-        positions[i3 + 2] = Math.pow(math.hash(20 + i * 31.512), 5);
+        positions[i3 + 2] = Math.pow(hash(20 + i * 31.512), 5);
     }
 
     const geometry = new THREE.BufferGeometry();
