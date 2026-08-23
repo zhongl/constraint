@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Fbo, assertFboRenderer } from './3d/fbo';
+import { requireConstraintRenderer, type ConstraintRenderer } from './ConstraintRenderer';
+import { Fbo } from './3d/fbo';
 import { ConstraintGround } from './3d/ground';
 import { ConstraintLights } from './3d/lights';
 import { ConstraintLines } from './3d/lines';
@@ -11,7 +12,7 @@ export interface ConstraintEffectOptions {
 }
 
 export class ConstraintEffect {
-    private readonly _renderer: THREE.WebGLRenderer;
+    private readonly _renderer: ConstraintRenderer;
     private readonly _scene: THREE.Scene;
     private readonly _fog: THREE.FogExp2;
     private readonly _backgroundDark = new THREE.Color();
@@ -43,7 +44,7 @@ export class ConstraintEffect {
         scene: THREE.Scene,
         options: ConstraintEffectOptions
     ) {
-        this._renderer = renderer;
+        this._renderer = requireConstraintRenderer(renderer);
         this._scene = scene;
         this._fog = new THREE.FogExp2(this._backgroundDarkValue, this._fogDensity);
         this._fbo = new Fbo(options.textureSize);
@@ -85,7 +86,6 @@ export class ConstraintEffect {
     set fogDensity(value: number) { this._fogDensity = value; }
 
     init(): void {
-        assertFboRenderer(this._renderer);
         this._fbo.init(this._renderer);
 
         this._ignoredMaterial = new THREE.Material();
